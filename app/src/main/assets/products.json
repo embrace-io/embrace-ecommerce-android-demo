@@ -1,0 +1,222 @@
+[
+  {
+    "id": "1",
+    "name": "Premium Cotton T-Shirt",
+    "priceCents": 1999,
+    "description": "Soft 100% cotton t-shirt with a modern, comfortable fit. Perfect for everyday wear, offering maximum comfort and style. Made from breathable, high-quality cotton that drapes nicely.",
+    "imageUrls": [
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=400&h=400&fit=crop"
+    ],
+    "category": "Clothing",
+    "rating": 4.5,
+    "reviewCount": 128,
+    "inStock": true,
+    "discountPercentage": 0,
+    "variants": {
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "White",
+        "Black",
+        "Blue",
+        "Gray"
+      ]
+    }
+  },
+  {
+    "id": "2",
+    "name": "Classic Blue Jeans",
+    "priceCents": 4999,
+    "description": "High-quality jeans with the perfect cut for any occasion. Combines classic style with modern comfort for everyday wear or special events.",
+    "imageUrls": [
+      "https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400&h=400&fit=crop"
+    ],
+    "category": "Clothing",
+    "rating": 4.2,
+    "reviewCount": 89,
+    "inStock": true,
+    "discountPercentage": 15,
+    "variants": {
+      "sizes": [
+        "28",
+        "30",
+        "32",
+        "34",
+        "36",
+        "38"
+      ],
+      "colors": [
+        "Classic Blue",
+        "Dark Blue",
+        "Black"
+      ]
+    }
+  },
+  {
+    "id": "3",
+    "name": "Running Sneakers",
+    "priceCents": 6999,
+    "description": "Comfortable running sneakers with advanced cushioning technology. Designed for maximum performance and comfort during training and runs.",
+    "imageUrls": [
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&h=400&fit=crop"
+    ],
+    "category": "Footwear",
+    "rating": 4.7,
+    "reviewCount": 256,
+    "inStock": true,
+    "discountPercentage": 0,
+    "variants": {
+      "sizes": [
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12"
+      ],
+      "colors": [
+        "White",
+        "Black",
+        "Blue",
+        "Red"
+      ]
+    }
+  },
+  {
+    "id": "4",
+    "name": "Smartwatch",
+    "priceCents": 29999,
+    "description": "Smartwatch with heart-rate monitor and built-in GPS. Ideal for tracking your health and activity with pro-level accuracy.",
+    "imageUrls": [
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=400&h=400&fit=crop"
+    ],
+    "category": "Electronics",
+    "rating": 4.8,
+    "reviewCount": 342,
+    "inStock": true,
+    "discountPercentage": 20,
+    "variants": {
+      "sizes": [
+        "38mm",
+        "42mm",
+        "45mm"
+      ],
+      "colors": [
+        "Black",
+        "Silver",
+        "Gold"
+      ]
+    }
+  },
+  {
+    "id": "5",
+    "name": "Wireless Headphones",
+    "priceCents": 8999,
+    "description": "Headphones with noise cancelling and high‑fidelity sound",
+    "imageUrl": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
+    "category": "Electronics",
+    "rating": 4.6,
+    "reviewCount": 178,
+    "inStock": false,
+    "discountPercentage": 0
+  },
+  {
+    "id": "6",
+    "name": "Travel Backpack",
+    "priceCents": 3999,
+    "description": "Durable backpack with multiple compartments for travel",
+    "imageUrl": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop",
+    "category": "Accessories",
+    "rating": 4.3,
+    "reviewCount": 95,
+    "inStock": true,
+    "discountPercentage": 10
+  },
+  {
+    "id": "7",
+    "name": "Gourmet Cookbook",
+    "priceCents": 2499,
+    "description": "Cookbook featuring exclusive recipes from international chefs",
+    "imageUrl": "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=400&fit=crop",
+    "category": "Books",
+    "rating": 4.4,
+    "reviewCount": 67,
+    "inStock": true,
+    "discountPercentage": 0
+  },
+  {
+    "id": "8",
+    "name": "Automatic Coffee Maker",
+    "priceCents": 15999,
+    "description": "Programmable coffee maker with built‑in grinder and multiple options",
+    "imageUrl": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=400&fit=crop",
+    "category": "Home",
+    "rating": 4.9,
+    "reviewCount": 203,
+    "inStock": true,
+    "discountPercentage": 25
+  },
+  {
+    "id": "9",
+    "name": "Premium Yoga Set",
+    "priceCents": 5999,
+    "description": "Complete yoga set including mat, blocks, and strap",
+    "imageUrl": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=400&fit=crop",
+    "category": "Sports",
+    "rating": 4.1,
+    "reviewCount": 45,
+    "inStock": true,
+    "discountPercentage": 0
+  },
+  {
+    "id": "10",
+    "name": "Professional Digital Camera",
+    "priceCents": 89999,
+    "description": "DSLR camera with interchangeable lens and 4K video",
+    "imageUrl": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&h=400&fit=crop",
+    "category": "Electronics",
+    "rating": 4.7,
+    "reviewCount": 156,
+    "inStock": true,
+    "discountPercentage": 30
+  },
+  {
+    "id": "11",
+    "name": "Evening Dress",
+    "priceCents": 7999,
+    "description": "Elegant dress for special occasions",
+    "imageUrl": "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400&h=400&fit=crop",
+    "category": "Clothing",
+    "rating": 4.0,
+    "reviewCount": 78,
+    "inStock": true,
+    "discountPercentage": 0
+  },
+  {
+    "id": "12",
+    "name": "Hiking Boots",
+    "priceCents": 12999,
+    "description": "Water‑resistant boots for hiking and mountaineering",
+    "imageUrl": "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=400&fit=crop",
+    "category": "Footwear",
+    "rating": 4.6,
+    "reviewCount": 112,
+    "inStock": true,
+    "discountPercentage": 15
+  }
+]

@@ -1,0 +1,78 @@
+name: Run Espresso (every 2 hours, reuse last build)
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-tests:
+    name: Run Espresso (api ${{ matrix.api-level }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        api-level: [ 31, 32, 33, 34 ]
+
+    concurrency:
+      group: scheduled-espresso-main-${{ matrix.api-level }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls /dev/kvm
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine applicationId (Groovy or Kotlin DSL)
+        id: appid
+        shell: bash
+        run: |
+          set -e
+          APP_ID=""
+          if [ -f app/build.gradle ]; then
+            APP_ID=$(grep -m1 -E 'applicationId\s+"[^"]+"' app/build.gradle | sed -E 's/.*applicationId\s+"([^"]+)".*/\1/')
+          fi
+          if [ -z "$APP_ID" ] && [ -f app/build.gradle.kts ]; then
+            APP_ID=$(grep -m1 -E 'applicationId\s*=\s*"[^"]+"' app/build.gradle.kts | sed -E 's/.*applicationId\s*=\s*"([^"]+)".*/\1/')
+          fi
+          if [ -z "$APP_ID" ]; then
+            echo "Could not find applicationId" >&2
+            exit 1
+          fi
+          echo "APP_ID=$APP_ID" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts from last successful build
+        uses: dawidd6/action-download-artifact@v10
+        with:
+          workflow: build.yml
+          workflow_conclusion: success
+          branch: ${{ github.event.repository.default_branch || github.ref_name || 'main' }}
+          path: ./all_artifacts
+          if_no_artifact_found: fail
+
+      - name: Start emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APP_ID: ${{ steps.appid.outputs.APP_ID }}
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          disable-animations: true
+          disk-size: 6000M
+          heap-size: 600M
+          script: |
+            bash .github/scripts/run-variants.sh
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: espresso-logs
+          path: |
+            result-*.txt
+            all_artifacts

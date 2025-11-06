@@ -1,0 +1,13 @@
+{
+  "app_id": "zcfne",
+  "api_token": "48c50305c463ff3a53acbf8d7449a0da",
+  "ndk_enabled": false,
+  "sdk_config": {
+    "compose": {
+      "capture_compose_onclick": true
+    },
+    "networking": {
+      "enable_network_span_forwarding": true
+    }
+  }
+}

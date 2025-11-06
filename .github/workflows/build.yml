@@ -1,0 +1,68 @@
+name: Build APKs (on change)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - variant: MockDemoDebug
+            artifact_prefix: mockDebug
+            app_apk: app/build/outputs/apk/mockDemo/debug/app-mock-demo-debug.apk
+            test_apk: app/build/outputs/apk/androidTest/mockDemo/debug/app-mock-demo-debug-androidTest.apk
+            app_id: ${{ vars.EMBRACE_APP_ID_DEMO }}
+          - variant: MockSandboxDebug
+            artifact_prefix: mockSandbox
+            app_apk: app/build/outputs/apk/mockSandbox/debug/app-mock-sandbox-debug.apk
+            test_apk: app/build/outputs/apk/androidTest/mockSandbox/debug/app-mock-sandbox-debug-androidTest.apk
+            app_id: ${{ vars.EMBRACE_APP_ID_SANDBOX }}
+          - variant: MockEuropeDebug
+            artifact_prefix: mockEurope
+            app_apk: app/build/outputs/apk/mockEurope/debug/app-mock-europe-debug.apk
+            test_apk: app/build/outputs/apk/androidTest/mockEurope/debug/app-mock-europe-debug-androidTest.apk
+            app_id: ${{ vars.EMBRACE_APP_ID_EUROPE }}
+          - variant: ProdDemoDebug
+            artifact_prefix: prodDebug
+            app_apk: app/build/outputs/apk/prodDemo/debug/app-prod-demo-debug.apk
+            test_apk: app/build/outputs/apk/androidTest/prodDemo/debug/app-prod-demo-debug-androidTest.apk
+            app_id: ${{ vars.EMBRACE_APP_ID_DEMO }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure gradlew is executable
+        run: chmod +x ./gradlew
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Gradle cache
+        uses: gradle/gradle-build-action@v3
+
+      - name: Set Embrace appId
+        run: |
+          sed -i.bak 's/"app_id": ".*"/"app_id": "${{ matrix.app_id }}"/' app/src/main/embrace-config.json
+
+      - name: Build app and androidTest
+        run: ./gradlew :app:assemble${{ matrix.variant }} :app:assemble${{ matrix.variant }}AndroidTest
+
+      - name: Upload app APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.artifact_prefix }}.apk
+          path: ${{ matrix.app_apk }}
+          if-no-files-found: error
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.artifact_prefix }}-androidTest.apk
+          path: ${{ matrix.test_apk }}
+          if-no-files-found: error
