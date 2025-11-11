@@ -47,7 +47,7 @@ jobs:
           echo "APP_ID=$APP_ID" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts from last successful build
-        uses: dawidd6/action-download-artifact@v10
+        uses: actions/download-artifact@v4
         with:
           workflow: build.yml
           workflow_conclusion: success
