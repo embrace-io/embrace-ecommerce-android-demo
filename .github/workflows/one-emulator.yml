@@ -46,14 +46,24 @@ jobs:
           fi
           echo "APP_ID=$APP_ID" >> $GITHUB_OUTPUT
 
-      - name: Download all artifacts from last successful build
+      - name: Get last successful build run
+        id: find_build
+        run: |
+          RUN_ID=$(gh api \
+            repos/${{ github.repository }}/actions/workflows/build.yml/runs \
+            -q '.workflow_runs[] | select(.conclusion=="success")[0].id')
+      
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          workflow: build.yml
-          workflow_conclusion: success
-          branch: ${{ github.event.repository.default_branch || github.ref_name || 'main' }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.find_build.outputs.run_id }}
           path: ./all_artifacts
-          if_no_artifact_found: fail
+
 
       - name: Start emulator
         uses: reactivecircus/android-emulator-runner@v2
