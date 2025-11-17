@@ -2,8 +2,8 @@ name: Build APKs (on change)
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [ "main", "master" ]
+  push:
+    branches: [ "main", "master" ]
 jobs:
   build:
     runs-on: ubuntu-latest

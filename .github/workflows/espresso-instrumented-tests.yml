@@ -4,9 +4,9 @@ on:
   # push:
   #  branches:
   #    - main
-  schedule:
+  # schedule:
   # Run every 5 minutes
-  - cron: "*/10 * * * *"
+  # - cron: "*/10 * * * *"
   # Allow manual runs from the Actions tab
   workflow_dispatch:
 
