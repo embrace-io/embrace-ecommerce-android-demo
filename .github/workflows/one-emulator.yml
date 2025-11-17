@@ -67,7 +67,13 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.find_build.outputs.run_id }}
           path: ./all_artifacts
-          if-no-files-found: fail
+
+      - name: Ensure artifacts were downloaded
+        run: |
+          if [ ! -d "./all_artifacts" ] || [ -z "$(ls -A ./all_artifacts)" ]; then
+            echo "No artifacts were downloaded from run ${{ steps.find_build.outputs.run_id }}" >&2
+            exit 1
+          fi
 
       - name: Start emulator
         uses: reactivecircus/android-emulator-runner@v2
