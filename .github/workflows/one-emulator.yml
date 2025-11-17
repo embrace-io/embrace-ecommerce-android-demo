@@ -62,11 +62,29 @@ jobs:
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.find_build.outputs.run_id }}
-          path: ./all_artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p ./all_artifacts_raw ./all_artifacts
+          RESPONSE=$(curl -sS -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.find_build.outputs.run_id }}/artifacts")
+          ARTIFACT_COUNT=$(echo "$RESPONSE" | jq '.artifacts | length')
+          if [ "$ARTIFACT_COUNT" -eq 0 ]; then
+            echo "No artifacts found in run ${{ steps.find_build.outputs.run_id }}" >&2
+            exit 1
+          fi
+          echo "$RESPONSE" | jq -r '.artifacts[] | "\(.id) \(.archive_download_url) \(.name)"' | while read -r ARTIFACT_ID DOWNLOAD_URL ARTIFACT_NAME; do
+            if [ -z "$ARTIFACT_ID" ] || [ -z "$DOWNLOAD_URL" ] || [ -z "$ARTIFACT_NAME" ]; then
+              echo "Skipping artifact with missing data" >&2
+              continue
+            fi
+            ZIP_PATH="./all_artifacts_raw/${ARTIFACT_NAME}.zip"
+            curl -sS -L -H "Authorization: Bearer ${{ github.token }}" -o "$ZIP_PATH" "$DOWNLOAD_URL"
+            unzip -o "$ZIP_PATH" -d "./all_artifacts/${ARTIFACT_NAME}"
+          done
+          if [ -z "$(find ./all_artifacts -type f -print -quit)" ]; then
+            echo "Artifacts were listed but no files were extracted" >&2
+            exit 1
+          fi
 
       - name: Ensure artifacts were downloaded
         run: |
