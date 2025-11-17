@@ -48,14 +48,18 @@ jobs:
 
       - name: Get last successful build run
         id: find_build
-        run: |
-          RUN_ID=$(gh api \
-            repos/${{ github.repository }}/actions/workflows/build.yml/runs \
-            -q '.workflow_runs[] | select(.conclusion=="success")[0].id')
-      
-          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RUN_ID=$(gh api \
+            repos/${{ github.repository }}/actions/workflows/build.yml/runs \
+            --jq 'first(.workflow_runs[] | select(.conclusion=="success")).id')
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful build workflow run found" >&2
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -63,7 +67,7 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.find_build.outputs.run_id }}
           path: ./all_artifacts
-
+          if-no-files-found: fail
 
       - name: Start emulator
         uses: reactivecircus/android-emulator-runner@v2
