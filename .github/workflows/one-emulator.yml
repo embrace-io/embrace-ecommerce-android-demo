@@ -110,7 +110,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: espresso-logs
+          name: espresso-logs-api-${{ matrix.api-level }}
           path: |
             result-*.txt
             all_artifacts
