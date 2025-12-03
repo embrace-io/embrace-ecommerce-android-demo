@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import io.embrace.android.embracesdk.Embrace
 import io.embrace.shoppingcart.BuildConfig
 import io.embrace.shoppingcart.presentation.testutil.UiTestOverrides
+import timber.log.Timber
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -142,7 +143,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         else -> "C"
     }
     Embrace.getInstance().addSessionProperty("User Cohort", cohort, false)
-
+    Timber.tag("Embrace").d("Embrace session id: %s", Embrace.getInstance().currentSessionId)
     blockWithBusyLoop()
 
 }

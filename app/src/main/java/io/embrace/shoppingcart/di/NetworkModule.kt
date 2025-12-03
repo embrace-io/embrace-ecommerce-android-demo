@@ -27,7 +27,11 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
-        return OkHttpClient.Builder().addInterceptor(logging).build()
+        val emptyResponseInterceptor = io.embrace.shoppingcart.network.EmptyResponseInterceptor()
+        return OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .addInterceptor(emptyResponseInterceptor)
+            .build()
     }
 
     @Provides

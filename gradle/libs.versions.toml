@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.0"
+agp = "8.13.1"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -28,7 +28,8 @@ perfGradle = "1.4.2"
 mixpanel = "7.5.3"
 stripe = "20.49.0"
 playServicesWallet = "19.4.0"
-embrace = "7.9.1"
+embrace = "7.9.3"
+opentelemetry = "1.56.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -76,6 +77,9 @@ firebase-perf = { group = "com.google.firebase", name = "firebase-perf-ktx" }
 mixpanel = { group = "com.mixpanel.android", name = "mixpanel-android", version.ref = "mixpanel" }
 stripe-android = { group = "com.stripe", name = "stripe-android", version.ref = "stripe" }
 play-services-wallet = { group = "com.google.android.gms", name = "play-services-wallet", version.ref = "playServicesWallet" }
+opentelemetry-api = { group = "io.opentelemetry", name = "opentelemetry-api", version.ref = "opentelemetry" }
+opentelemetry-sdk = { group = "io.opentelemetry", name = "opentelemetry-sdk", version.ref = "opentelemetry" }
+opentelemetry-exporter-logging = { group = "io.opentelemetry", name = "opentelemetry-exporter-logging", version.ref = "opentelemetry" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

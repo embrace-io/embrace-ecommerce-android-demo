@@ -156,4 +156,9 @@ dependencies {
 
     implementation(libs.embrace.android.compose)
 
+    // OpenTelemetry
+    implementation(libs.opentelemetry.api)
+    implementation(libs.opentelemetry.sdk)
+    implementation(libs.opentelemetry.exporter.logging)
+
 }
