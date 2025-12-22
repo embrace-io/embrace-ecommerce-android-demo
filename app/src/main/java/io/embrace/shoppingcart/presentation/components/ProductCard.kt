@@ -50,7 +50,7 @@ fun ProductCard(
                 // Add to cart button
                 IconButton(
                         onClick = {
-                            Embrace.getInstance().addBreadcrumb("Added to cart: ${product.name}")
+                            Embrace.addBreadcrumb("Added to cart: ${product.name}")
                             onAddToCartClick(product)
                         },
                         enabled = !isAddingToCart && product.inStock,
@@ -83,7 +83,7 @@ fun ProductCard(
                 // Add to cart button
                 IconButton(
                     onClick = {
-                        Embrace.getInstance().addBreadcrumb("Added to Favorites: ${product.name}")
+                        Embrace.addBreadcrumb("Added to Favorites: ${product.name}")
                     },
                     enabled = !isAddingToCart && product.inStock,
                     modifier =

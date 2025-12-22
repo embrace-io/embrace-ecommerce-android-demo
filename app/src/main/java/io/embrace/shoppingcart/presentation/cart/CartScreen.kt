@@ -94,7 +94,7 @@ fun CartScreen(viewModel: CartViewModel = hiltViewModel()) {
             Text("Subtotal: $" + String.format("%.2f", state.subtotalCents / 100.0))
             Spacer(Modifier.height(8.dp))
             Button(onClick = {
-                Embrace.getInstance().addBreadcrumb("CHECKOUT_STARTED")
+                Embrace.addBreadcrumb("CHECKOUT_STARTED")
                 if (state.items.isNotEmpty()) {
                     context.startActivity(Intent(context, CheckoutActivity::class.java))
                 }

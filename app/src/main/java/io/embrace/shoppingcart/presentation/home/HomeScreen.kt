@@ -149,7 +149,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         chance < 8 -> "B"
         else -> "C"
     }
+    @Suppress("DEPRECATION")
     Embrace.getInstance().addSessionProperty("User Cohort", cohort, false)
+    @Suppress("DEPRECATION")
     Timber.tag("Embrace").d("Embrace session id: %s", Embrace.getInstance().currentSessionId)
     blockWithBusyLoop()
 

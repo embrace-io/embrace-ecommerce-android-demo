@@ -150,7 +150,7 @@ class MockApiService @Inject constructor(
         endTime: Long,
         statusCode: Int
         ) {
-        Embrace.getInstance().recordNetworkRequest(
+        Embrace.recordNetworkRequest(
             EmbraceNetworkRequest.fromCompletedRequest(
                 url = url,
                 httpMethod = httpMethod,
@@ -170,7 +170,7 @@ class MockApiService @Inject constructor(
         endTime: Long,
         errorMessage: String
     ) {
-        Embrace.getInstance().recordNetworkRequest(
+        Embrace.recordNetworkRequest(
             EmbraceNetworkRequest.fromIncompleteRequest(
                 url = url,
                 httpMethod = httpMethod,

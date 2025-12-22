@@ -85,7 +85,7 @@ fun AuthScreen(viewModel: AuthViewModel = hiltViewModel(), onSuccess: (() -> Uni
             OutlinedButton(
                 onClick = {
                     viewModel.enterAsGuest()
-                    Embrace.getInstance().addBreadcrumb("Entered as guest")
+                    Embrace.addBreadcrumb("Entered as guest")
                           },
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth().testTag("enter_as_guest").clickable(onClickLabel = "Enter as guest") {

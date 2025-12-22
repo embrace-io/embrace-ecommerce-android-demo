@@ -57,7 +57,7 @@ fun CartReviewStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () ->
     val state by viewModel.state.collectAsState()
     val now = System.currentTimeMillis()
     val durationMs by remember { mutableStateOf(kotlin.random.Random.nextLong(200, 1501)) }
-    Embrace.getInstance().recordCompletedSpan(
+    Embrace.recordCompletedSpan(
         name = "Render Cart Items",
         startTimeMs = now - durationMs,
         endTimeMs = now
@@ -116,15 +116,15 @@ fun PaymentStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Un
                     failedRequestPaymentMethods(now, durationMs)
                     failedRequestPaymentMethods(now, durationMs)
                     failedRequestPaymentMethods(now, durationMs)
-                    Embrace.getInstance().recordCompletedSpan(
+                    Embrace.recordCompletedSpan(
                         name = "Loaded Payment Methods",
                         startTimeMs = now - durationMs,
                         endTimeMs = now,
                         errorCode = ErrorCode.FAILURE
                     )
-                    Embrace.getInstance().logError("Rejected: too many requests")
+                    Embrace.logError("Rejected: too many requests")
                 }
-                else -> Embrace.getInstance().recordCompletedSpan(
+                else -> Embrace.recordCompletedSpan(
                     name = "Loaded Payment Methods",
                     startTimeMs = now - durationMs,
                     endTimeMs = now
@@ -152,7 +152,7 @@ fun PaymentStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Un
 
 @Composable
 private fun failedRequestPaymentMethods(now: Long, durationMs: Long) {
-    Embrace.getInstance().recordNetworkRequest(
+    Embrace.recordNetworkRequest(
         EmbraceNetworkRequest.fromCompletedRequest(
             url = "https://api.ecommerce.com/payment_methods",
             httpMethod = HttpMethod.GET,
@@ -199,7 +199,7 @@ fun ConfirmationStep(viewModel: CheckoutViewModel = hiltViewModel(), onFinish: (
                 }
                 val chanceOfFailure = remember { Random.nextInt(10) } // 0..9 inclusive
                 if (chanceOfFailure < 3) {
-                    Embrace.getInstance().logInfo("Displaying error modal: Sorry, we're having trouble processing your order. Please try again later.")
+                    Embrace.logInfo("Displaying error modal: Sorry, we're having trouble processing your order. Please try again later.")
                 }
             }
         }

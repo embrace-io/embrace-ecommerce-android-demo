@@ -91,14 +91,14 @@ private fun CheckoutScaffold(viewModel: CheckoutViewModel = hiltViewModel(), onF
                 composable("shipping") {
                     viewModel.goTo(CheckoutStep.Shipping)
                     ShippingStep(onNext = {
-                        Embrace.getInstance().addBreadcrumb("CHECKOUT_SHIPPING_COMPLETED")
+                        Embrace.addBreadcrumb("CHECKOUT_SHIPPING_COMPLETED")
                         navController.navigate("payment")
                     })
                 }
                 composable("payment") {
                     viewModel.goTo(CheckoutStep.Payment)
                     PaymentStep(onNext = {
-                        Embrace.getInstance().addBreadcrumb("CHECKOUT_PAYMENT_COMPLETED")
+                        Embrace.addBreadcrumb("CHECKOUT_PAYMENT_COMPLETED")
                         navController.navigate("confirm")
                     })
                 }

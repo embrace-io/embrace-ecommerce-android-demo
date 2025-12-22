@@ -58,7 +58,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
-                Embrace.getInstance().addBreadcrumb("Enter Product Search.")
+                Embrace.addBreadcrumb("Enter Product Search.")
 
                 val (productsResult, categoriesResult) = kotlinx.coroutines.supervisorScope {
                     val productsDeferred = async { runCatching { getProducts() } }

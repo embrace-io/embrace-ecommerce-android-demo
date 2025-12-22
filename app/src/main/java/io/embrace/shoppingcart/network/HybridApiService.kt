@@ -23,10 +23,10 @@ class HybridApiService(
     override suspend fun getCategories(): List<CategoryDto> = mockApi.getCategories()
 
     override suspend fun placeOrder(request: OrderRequest): OrderResponse {
-        val beforeTime = Embrace.getInstance().getSdkCurrentTimeMs()
+        val beforeTime = Embrace.getSdkCurrentTimeMs()
         Timber.d("placeOrder - before request: ${dateFormat.format(Date(beforeTime))}")
         val response = realApi.placeOrder(request)
-        val afterTime = Embrace.getInstance().getSdkCurrentTimeMs()
+        val afterTime = Embrace.getSdkCurrentTimeMs()
         Timber.d("placeOrder - after response: ${dateFormat.format(Date(afterTime))}")
         Timber.d("placeOrder - duration: ${afterTime - beforeTime}")
         return response

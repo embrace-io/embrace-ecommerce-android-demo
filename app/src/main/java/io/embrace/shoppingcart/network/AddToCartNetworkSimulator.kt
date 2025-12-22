@@ -35,7 +35,7 @@ class AddToCartNetworkSimulator @Inject constructor() {
             null // capture data
         )
 
-        Embrace.getInstance().recordNetworkRequest(request)
+        Embrace.recordNetworkRequest(request)
     }
 }
 
