@@ -135,6 +135,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     // Hilt testing
     androidTestImplementation("com.google.dagger:hilt-android-testing:${libs.versions.hilt.get()}")
     kaptAndroidTest(libs.hilt.compiler)

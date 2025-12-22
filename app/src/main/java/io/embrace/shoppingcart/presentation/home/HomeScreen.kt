@@ -28,6 +28,8 @@ import io.embrace.android.embracesdk.Embrace
 import io.embrace.shoppingcart.BuildConfig
 import io.embrace.shoppingcart.presentation.testutil.UiTestOverrides
 import timber.log.Timber
+import android.os.Handler
+import android.os.Looper
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -97,7 +99,12 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 
             Column {
                 Button(
-                    onClick = { 1 / 0 },
+                    onClick = {
+                        // Crash asíncrono para permitir que los tests puedan manejar el crash
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            throw RuntimeException("Intentional crash for testing: divide by zero")
+                        }, 100)
+                    },
                     modifier = Modifier.padding(horizontal = 4.dp).testTag("crash_button")
                 ) { Text("How much is 1 divided by Zero?") }
 
