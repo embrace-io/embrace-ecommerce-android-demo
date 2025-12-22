@@ -155,7 +155,8 @@ dependencies {
     implementation(libs.stripe.android)
     implementation(libs.play.services.wallet)
 
-    implementation(libs.embrace.android.compose)
+    implementation(libs.embrace.android.instrumentation.compose.tap)
+    implementation(libs.embrace.android.otel.java)
 
     // OpenTelemetry
     implementation(libs.opentelemetry.api)

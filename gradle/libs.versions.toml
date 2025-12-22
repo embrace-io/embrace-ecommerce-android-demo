@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.1"
+agp = "8.13.2"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -28,12 +28,13 @@ perfGradle = "1.4.2"
 mixpanel = "7.5.3"
 stripe = "20.49.0"
 playServicesWallet = "19.4.0"
-embrace = "7.9.3"
+embrace = "8.0.0"
 opentelemetry = "1.56.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-embrace-android-compose = { module = "io.embrace:embrace-android-compose", version.ref = "embrace" }
+embrace-android-instrumentation-compose-tap = { module = "io.embrace:embrace-android-instrumentation-compose-tap", version.ref = "embrace" }
+embrace-android-otel-java = { module = "io.embrace:embrace-android-otel-java", version.ref = "embrace" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -90,4 +91,4 @@ kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsGradle" }
 firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "perfGradle" }
-embrace = { id = "io.embrace.swazzler", version.ref = "embrace" }
+embrace = { id = "io.embrace.gradle", version.ref = "embrace" }

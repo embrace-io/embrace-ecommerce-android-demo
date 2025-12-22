@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
 import io.embrace.android.embracesdk.Embrace
+import io.embrace.android.embracesdk.otel.java.addJavaSpanExporter
 import io.embrace.shoppingcart.mock.MockNetworkConfig
 import io.embrace.shoppingcart.mock.MockNetworkConfigOverrides
 import io.embrace.shoppingcart.mock.NetworkScenario
@@ -25,8 +26,8 @@ import timber.log.Timber
             )
         }*/
 
-        Embrace.getInstance().addSpanExporter(CustomSpanExporter())
+        Embrace.addJavaSpanExporter(CustomSpanExporter())
 
-        Embrace.getInstance().start(this)
+        Embrace.start(this)
     }
 }
