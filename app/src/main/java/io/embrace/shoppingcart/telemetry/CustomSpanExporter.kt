@@ -61,6 +61,31 @@ class CustomSpanExporter : SpanExporter {
                 if (traceparent != null) appendLine("│ Traceparent: $traceparent")
                 if (sessionId != null) appendLine("│ Session ID:  $sessionId")
             }
+            // All attributes
+            val allAttributes = span.attributes.asMap()
+            if (allAttributes.isNotEmpty()) {
+                appendLine("├─────────────────────────────────────────────────────────")
+                appendLine("│ Attributes:")
+                allAttributes.forEach { (key, value) ->
+                    appendLine("│   $key = $value")
+                }
+            }
+            // Span events
+            val events = span.events
+            if (events.isNotEmpty()) {
+                appendLine("├─────────────────────────────────────────────────────────")
+                appendLine("│ Events:")
+                events.forEach { event ->
+                    val eventTime = dateFormat.format(Date(TimeUnit.NANOSECONDS.toMillis(event.epochNanos)))
+                    appendLine("│   [$eventTime] ${event.name}")
+                    val eventAttrs = event.attributes.asMap()
+                    if (eventAttrs.isNotEmpty()) {
+                        eventAttrs.forEach { (key, value) ->
+                            appendLine("│     $key = $value")
+                        }
+                    }
+                }
+            }
             appendLine("└─────────────────────────────────────────────────────────")
         }
 

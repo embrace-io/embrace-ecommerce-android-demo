@@ -151,7 +151,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     }
     Embrace.addSessionProperty("User Cohort", cohort, false)
     Timber.tag("Embrace").d("Embrace session id: %s", Embrace.currentSessionId)
-    blockWithBusyLoop()
+    if (BuildConfig.TRIGGER_ANRS) {
+        blockWithBusyLoop()
+    }
 
 }
 private const val DEFAULT_BLOCK_DURATION_MS = 15000L

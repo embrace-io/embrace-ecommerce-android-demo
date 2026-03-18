@@ -65,16 +65,25 @@ android {
             dimension = "embrace"
             applicationIdSuffix = ".demo"
             versionNameSuffix = "-demo"
+            buildConfigField("boolean", "TRIGGER_ANRS", "true")
+        }
+        create("demoNoAnr") {
+            dimension = "embrace"
+            applicationIdSuffix = ".demo.noanr"
+            versionNameSuffix = "-demoNoAnr"
+            buildConfigField("boolean", "TRIGGER_ANRS", "false")
         }
         create("europe") {
             dimension = "embrace"
             applicationIdSuffix = ".europe"
             versionNameSuffix = "-europe"
+            buildConfigField("boolean", "TRIGGER_ANRS", "true")
         }
         create("sandbox") {
             dimension = "embrace"
             applicationIdSuffix = ".sandbox"
             versionNameSuffix = "-sandbox"
+            buildConfigField("boolean", "TRIGGER_ANRS", "true")
         }
     }
     packaging {

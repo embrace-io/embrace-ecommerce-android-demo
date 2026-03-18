@@ -21,8 +21,12 @@ import androidx.compose.ui.platform.testTag
 import io.embrace.android.embracesdk.Embrace
 import io.embrace.android.embracesdk.network.EmbraceNetworkRequest
 import io.embrace.android.embracesdk.network.http.HttpMethod
+import io.embrace.android.embracesdk.otel.java.getJavaOpenTelemetry
+import io.embrace.android.embracesdk.spans.EmbraceSpanEvent
 import io.embrace.android.embracesdk.spans.ErrorCode
 import io.embrace.shoppingcart.ui.payment.PaymentMethodsActivity
+import io.opentelemetry.api.common.Attributes
+import java.time.Instant
 import kotlin.random.Random
 
 @Composable
@@ -83,6 +87,18 @@ fun CartReviewStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () ->
 @Composable
 fun ShippingStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Unit) {
     val state by viewModel.state.collectAsState()
+
+    val tracer = Embrace.getJavaOpenTelemetry().tracerProvider.get("shipping")
+
+    val span = tracer.spanBuilder("shipping-trace")
+        .setAttribute("tracer shipping attribute", "some value")
+        .setStartTimestamp(Instant.ofEpochMilli(Embrace.getSdkCurrentTimeMs() - 2000))
+        .startSpan()
+
+    span.addEvent("shipping event", Attributes.builder().put("shipping event attribute", "other value").build())
+
+    span.end()
+
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(state.name, viewModel::updateName, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth().testTag("name_field"))
         OutlinedTextField(state.street, viewModel::updateStreet, label = { Text("Street") }, modifier = Modifier.fillMaxWidth().testTag("street_field"))
@@ -111,6 +127,24 @@ fun PaymentStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Un
             val now = System.currentTimeMillis()
             val durationMs by remember { mutableStateOf(kotlin.random.Random.nextLong(200, 1501)) }
             val chanceOfFailure = remember { Random.nextInt(10) } // 0..9 inclusive
+
+            val attributes = mapOf("custom span attribute" to "custom span attribute value")
+            val events = listOf(
+                EmbraceSpanEvent.create(
+                    name ="custom span event",
+                    timestampMs = Embrace.getSdkCurrentTimeMs(),
+                    attributes = mapOf("custom event attribute" to "custom event attribute value")
+                )!!
+            )
+
+            Embrace.recordCompletedSpan(
+                name = "Loaded Payment Methods A",
+                startTimeMs = now - durationMs,
+                endTimeMs = now,
+                attributes = attributes,
+                events = events
+            )
+
             when {
                 chanceOfFailure < 3 -> {
                     failedRequestPaymentMethods(now, durationMs)
@@ -127,7 +161,9 @@ fun PaymentStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Un
                 else -> Embrace.recordCompletedSpan(
                     name = "Loaded Payment Methods",
                     startTimeMs = now - durationMs,
-                    endTimeMs = now
+                    endTimeMs = now,
+                    attributes = attributes,
+                    events = events
                 )
             }
             state.availablePaymentMethods.forEach { pm ->
