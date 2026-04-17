@@ -30,6 +30,7 @@ import io.embrace.shoppingcart.presentation.testutil.UiTestOverrides
 import timber.log.Timber
 import android.os.Handler
 import android.os.Looper
+import io.embrace.android.embracesdk.Severity
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -155,6 +156,11 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         blockWithBusyLoop()
     }
 
+    try {
+        throw UnsupportedOperationException("This is a handled exception message")
+    } catch (ex: Throwable) {
+        Embrace.logException(ex, Severity.ERROR)
+    }
 }
 private const val DEFAULT_BLOCK_DURATION_MS = 15000L
 

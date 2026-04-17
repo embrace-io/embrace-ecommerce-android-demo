@@ -29,7 +29,7 @@ perfGradle = "2.0.0"
 mixpanel = "7.5.3"
 stripe = "20.49.0"
 playServicesWallet = "19.4.0"
-embrace = "8.1.0"
+embrace = "8.2.0"
 opentelemetry = "1.60.1"
 
 [libraries]
