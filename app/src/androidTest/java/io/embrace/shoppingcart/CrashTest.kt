@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.test.espresso.Espresso
+import androidx.test.espresso.IdlingPolicies
 import androidx.test.espresso.NoActivityResumedException
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import android.content.Intent
@@ -13,6 +14,8 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import io.embrace.shoppingcart.ui.home.HomeActivity
+import java.util.concurrent.TimeUnit
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,6 +28,15 @@ class CrashTest {
 
     private val device: UiDevice by lazy {
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    }
+
+    // Slow CI emulators (notably API 31 x86_64) can skip hundreds of frames during
+    // cold start, leaving the Compose-Espresso idling resource non-idle past the
+    // default 26s timeout. Bump to 60s to absorb that.
+    @Before
+    fun raiseIdlingTimeouts() {
+        IdlingPolicies.setMasterPolicyTimeout(60, TimeUnit.SECONDS)
+        IdlingPolicies.setIdlingResourceTimeout(60, TimeUnit.SECONDS)
     }
 
     @Test
