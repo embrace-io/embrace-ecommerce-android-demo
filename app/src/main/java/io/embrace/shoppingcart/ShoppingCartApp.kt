@@ -32,6 +32,5 @@ import timber.log.Timber
 
         Embrace.addSessionProperty("flavor_env", BuildConfig.FLAVOR_env, true)
         Embrace.addSessionProperty("flavor_embrace", BuildConfig.FLAVOR_embrace, true)
-        Embrace.addSessionProperty("crash_test_run", "1", true)
     }
 }
