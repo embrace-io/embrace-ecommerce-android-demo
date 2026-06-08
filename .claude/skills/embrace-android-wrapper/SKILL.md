@@ -67,15 +67,18 @@ Mirror this surface (proven shape, matches the iOS wrapper at the company so das
 - **User identity:** `setUser(id, email = null, name = null)` / `clearUser()`. Document that email/name map to deprecated SDK methods and most apps should pass `null`.
 - **Manual network capture:** `recordNetworkRequest(url, method, startTimeMs, endTimeMs, statusCode, bytesSent, bytesReceived, errorMessage, traceId, w3cTraceparent)`. Use only for transports the SDK can't auto-capture (gRPC, WebSocket, native HTTP).
 - **Push:** `recordPushNotification(title, body, from, messageId, data)`. The SDK's `logPushNotification(...)` is **deprecated in 8.x** — emit a structured `logMessage` + breadcrumb instead.
+- **Lifecycle & consent:** `initialize(context, config)` (called once from `Application.onCreate`; the wrapper decides whether the SDK starts: kill switch → persisted consent → sampling, and absorbs `Embrace.start` failures), `optIn()` / `optOut()` (consent persisted in SharedPreferences; opt-out calls `Embrace.disable()` — note disable is one-way within a process, capture resumes next launch), `isCapturing`, and `startNewSession(clearUserInfo)` for manual session boundaries (login, the opt-in moment, account switch).
+- **Lifecycle-safe span handle:** `startActiveSpan(name, attributes, timeoutMs, endOnBackground): ActiveSpan` — idempotent `stop()`, optional timeout that closes the span as FAILURE (hangs become visible), optional close-as-USER_ABANDON when the app backgrounds. Never returns null (no-op handle when capture is off). Requires `androidx.lifecycle:lifecycle-process` for the background observer.
 - **Domain helpers** (the reason this wrapper exists): one method per important user flow. See "Domain helper template" below.
 
 ### What NOT to expose
 
 - `logDebug` — no DEBUG severity on Android.
 - `personas` — controversial; many customers find them confusing. Add only if asked.
-- `endSession`, `applicationInitStart/End`, `disable`, `startView/endView` — leak SDK lifecycle into feature code. Keep these in `Application.onCreate` directly.
+- Raw `endSession` / `disable` — expose them as the higher-level `startNewSession()` and `optOut()` instead, so the consent/boundary semantics live in the wrapper.
+- `applicationInitStart/End`, `startView/endView` — keep these in `Application.onCreate` / navigation instrumentation directly.
 - `getSdkCurrentTimeMs`, `currentSessionId`, `deviceId`, `lastRunEndState` — utility/debug surface, not telemetry. Skip unless the customer specifically needs them.
-- `addJavaSpanExporter`, `getJavaOpenTelemetry` — advanced OTel surface. Keep at SDK init; not part of the wrapper.
+- `addJavaSpanExporter`, `getJavaOpenTelemetry` — advanced OTel surface. Keep inside the wrapper's `initialize` (e.g. to register a PII-scrubbing exporter); not part of the public interface.
 
 ### Architecture
 
@@ -84,13 +87,17 @@ telemetry/
   TelemetryService.kt           — interface
   EmbraceTelemetryService.kt    — production impl (delegates to Embrace)
   NoOpTelemetryService.kt       — for tests / disabled builds
+  TelemetryConfig.kt            — operational controls (kill switch, per-signal toggles, sampling, log budget)
+  TelemetryGuardrails.kt        — name validation + attribute limits + log rate limiter
+  ActiveSpan.kt                 — lifecycle-safe span handle (idempotent stop, timeout, background abandon)
+  PiiScrubbingSpanExporter.kt   — redacts PII before spans reach external OTel exporters
 di/ (or wherever DI lives)
-  TelemetryModule.kt            — Hilt @Binds (or Koin module, etc.)
+  TelemetryModule.kt            — Hilt @Provides (or Koin module, etc.)
 ```
 
-- Make the impl a `class` with no constructor params, annotated `@Singleton` and `@Inject constructor()` for Hilt. Add a `companion object { val instance by lazy { ... } }` so non-DI code (Application, Composables) can also use it.
-- `NoOpTelemetryService` should be an `object`. Methods do nothing except `recordSpan { block() }` which still runs the block (preserve the production code path).
-- `Embrace.start(context)` stays in `Application.onCreate` — the wrapper does NOT own SDK lifecycle.
+- The wrapper now holds STATE (consent, config, rate-limiter windows), so there must be exactly ONE instance. Give the impl a private constructor with a `companion object { val instance by lazy { ... } }`, and have the DI module `@Provides` that same `instance` — a Hilt `@Binds` + `@Inject constructor()` would create a second object with divergent state.
+- `NoOpTelemetryService` should be an `object`. Methods do nothing except `recordSpan { block() }` which still runs the block (preserve the production code path), and `startActiveSpan` returns a no-op handle.
+- The wrapper OWNS SDK lifecycle: `Application.onCreate` calls `wrapper.initialize(context, TelemetryConfig.forBuild(BuildConfig.DEBUG))`, and the wrapper decides whether `Embrace.start` runs (kill switch → consent → sampling), registers exporters, sets shared-schema session properties, and absorbs start failures.
 
 ---
 
@@ -123,6 +130,11 @@ import io.embrace.android.embracesdk.spans.ErrorCode
 | Network — failed | `EmbraceNetworkRequest.fromIncompleteRequest(url, httpMethod, start, end, errorType, errorMessage, traceId, w3cTraceparent)` |
 | SDK time | `Embrace.getSdkCurrentTimeMs()` — use this for span start/end times |
 | SDK started? | `Embrace.isStarted: Boolean` |
+| End session + start fresh one | `Embrace.endSession(clearUserInfo: Boolean = false)` — wrap as `startNewSession` |
+| Stop capture (opt-out) | `Embrace.disable()` — stops export, deletes unsent data; **one-way until next process launch** |
+| External OTel exporter | `Embrace.addJavaSpanExporter(exporter)` (import `io.embrace.android.embracesdk.otel.java.addJavaSpanExporter`) — must be called BEFORE `Embrace.start` |
+
+**SDK limits to enforce in the wrapper (from `OtelLimitsConfig`):** span/log name ≤ 128 chars, attribute key ≤ 128, attribute value ≤ 1024, ≤ 100 custom attributes per span, session property key ≤ 128 / value ≤ 1024, ~100 session properties. The SDK truncates silently at these limits — validate in the wrapper first so truncation is visible in development.
 
 **`ErrorCode` enum:** `FAILURE`, `USER_ABANDON`, `UNKNOWN`. Use `FAILURE` for actual failures, `USER_ABANDON` for user-cancelled flows (login give-up, checkout abandon).
 
@@ -220,9 +232,13 @@ After writing the wrapper:
 A complete, build-verified wrapper lives in this repo (when this skill is read from `embrace-ecommerce-android-demo`):
 
 - `app/src/main/java/io/embrace/shoppingcart/telemetry/TelemetryService.kt` — the interface, with the 8 design principles documented at the top
-- `app/src/main/java/io/embrace/shoppingcart/telemetry/EmbraceTelemetryService.kt` — production impl with domain helpers and 5 demo crash sites
+- `app/src/main/java/io/embrace/shoppingcart/telemetry/EmbraceTelemetryService.kt` — production impl: lifecycle/consent/sampling gate, domain helpers, log rate limiting, common attributes, 5 demo crash sites
 - `app/src/main/java/io/embrace/shoppingcart/telemetry/NoOpTelemetryService.kt` — test impl
-- `app/src/main/java/io/embrace/shoppingcart/di/TelemetryModule.kt` — Hilt binding
+- `app/src/main/java/io/embrace/shoppingcart/telemetry/TelemetryConfig.kt` — operational controls (kill switch, per-signal enablement, deterministic install sampling, debug/release defaults)
+- `app/src/main/java/io/embrace/shoppingcart/telemetry/TelemetryGuardrails.kt` — enforced naming conventions, SDK limits, log rate limiter
+- `app/src/main/java/io/embrace/shoppingcart/telemetry/ActiveSpan.kt` — lifecycle-safe span handle (timeout → FAILURE, background → USER_ABANDON, idempotent stop)
+- `app/src/main/java/io/embrace/shoppingcart/telemetry/PiiScrubbingSpanExporter.kt` — exporter-layer PII redaction for external OTel destinations
+- `app/src/main/java/io/embrace/shoppingcart/di/TelemetryModule.kt` — Hilt `@Provides` of the shared instance
 
 When the customer's stack diverges (Koin, manual DI, no domain helpers, etc.), use these files for the **primitive shape** (logs/spans/breadcrumbs/session/user/network/push) and adapt the domain helpers and DI wiring to their app.
 

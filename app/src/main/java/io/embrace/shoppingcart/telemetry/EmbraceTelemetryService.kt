@@ -1,23 +1,157 @@
 package io.embrace.shoppingcart.telemetry
 
+import android.content.Context
+import android.content.SharedPreferences
 import io.embrace.android.embracesdk.Embrace
 import io.embrace.android.embracesdk.Severity
 import io.embrace.android.embracesdk.network.EmbraceNetworkRequest
 import io.embrace.android.embracesdk.network.http.HttpMethod
+import io.embrace.android.embracesdk.otel.java.addJavaSpanExporter
 import io.embrace.android.embracesdk.spans.EmbraceSpan
 import io.embrace.android.embracesdk.spans.ErrorCode
-import javax.inject.Inject
-import javax.inject.Singleton
+import io.embrace.shoppingcart.BuildConfig
+import timber.log.Timber
+import java.util.UUID
 
 /**
  * Production [TelemetryService] backed by the Embrace Android SDK.
  *
- * Inject via Hilt (preferred) or use [instance] from code outside DI scope.
- * All public methods are safe to call before `Embrace.start()` — the
- * underlying SDK no-ops or buffers as appropriate.
+ * A true singleton: Hilt provides [instance] (see TelemetryModule), and code
+ * outside DI scope uses [instance] directly — both see the same consent and
+ * config state. All public methods are safe to call before `Embrace.start()`.
  */
-@Singleton
-class EmbraceTelemetryService @Inject constructor() : TelemetryService {
+class EmbraceTelemetryService private constructor() : TelemetryService {
+
+    // -------------------------------------------------------------------------
+    // Lifecycle & consent.
+    //
+    // The wrapper owns the start decision: kill switch → consent → sampling.
+    // Any "no" means the SDK never starts this launch, so an opted-out user
+    // leaks zero pre-consent data (Wrapper Use Cases §3, §5).
+    //
+    // `capturing = false` also covers a failed Embrace.start: the app keeps
+    // running, signals degrade to no-ops, and the failure is a Timber error —
+    // feature code never sees it (§3 "Failure handling").
+    // -------------------------------------------------------------------------
+
+    @Volatile private var capturing = false
+    private var config: TelemetryConfig = TelemetryConfig()
+    private var prefs: SharedPreferences? = null
+    private var appContext: Context? = null
+    private var logRateLimiter = LogRateLimiter(config.maxLogsPerMinute)
+
+    override val isCapturing: Boolean
+        get() = capturing && Embrace.isStarted
+
+    override fun initialize(context: Context, config: TelemetryConfig) {
+        this.appContext = context.applicationContext
+        this.config = config
+        this.logRateLimiter = LogRateLimiter(config.maxLogsPerMinute)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        this.prefs = prefs
+
+        if (!config.enabled) {
+            Timber.i("Telemetry kill switch is off; SDK not started.")
+            return
+        }
+        if (prefs.getBoolean(KEY_OPT_OUT, false)) {
+            Timber.i("User has opted out of telemetry; SDK not started.")
+            return
+        }
+        if (!config.isInstallSampled(installId(prefs))) {
+            Timber.i("Install not in the %d%% sample; SDK not started.", config.sampleRolloutPercent)
+            return
+        }
+        startSdk(context)
+    }
+
+    override fun optIn() {
+        prefs?.edit()?.putBoolean(KEY_OPT_OUT, false)?.apply()
+        val context = appContext ?: return
+        if (!config.enabled) return
+        when {
+            !Embrace.isStarted -> {
+                // Consent-delayed start: the SDK comes up now, mid-process.
+                startSdk(context)
+            }
+            capturing -> {
+                // Already capturing; mark the consent moment as a session boundary.
+                startNewSession()
+            }
+            else -> {
+                // Embrace.disable() was called earlier in this process; it is
+                // one-way until relaunch. Consent is persisted, so capture
+                // resumes on the next launch.
+                Timber.i("Opt-in recorded; capture resumes on next launch.")
+            }
+        }
+    }
+
+    override fun optOut() {
+        prefs?.edit()?.putBoolean(KEY_OPT_OUT, true)?.apply()
+        if (Embrace.isStarted) {
+            clearUser()
+            runCatching { Embrace.disable() }
+                .onFailure { Timber.e(it, "Embrace.disable() failed") }
+        }
+        capturing = false
+        Timber.i("User opted out; telemetry capture stopped.")
+    }
+
+    override fun startNewSession(clearUserInfo: Boolean) {
+        if (!capturing) return
+        Embrace.endSession(clearUserInfo)
+    }
+
+    private fun startSdk(context: Context) {
+        runCatching {
+            // External OTel exporters must be registered BEFORE start. Spans
+            // forwarded to them pass through the PII scrub first (§5).
+            Embrace.addJavaSpanExporter(PiiScrubbingSpanExporter(CustomSpanExporter()))
+            Embrace.start(context.applicationContext)
+        }.onFailure {
+            capturing = false
+            Timber.e(it, "Embrace SDK failed to start; telemetry disabled for this launch.")
+            return
+        }
+        capturing = true
+
+        // Shared schema (§4 "Consistent session properties"): every session
+        // carries build context, set HERE so it can't drift per call site.
+        addSessionProperty("flavor_env", BuildConfig.FLAVOR_env, permanent = true)
+        addSessionProperty("flavor_embrace", BuildConfig.FLAVOR_embrace, permanent = true)
+        addSessionProperty("build_type", if (BuildConfig.DEBUG) "debug" else "release", permanent = true)
+    }
+
+    /**
+     * Stable per-install ID for sampling. Deliberately NOT the Embrace device
+     * ID: that is only available after the SDK starts, and starting is what
+     * sampling decides.
+     */
+    private fun installId(prefs: SharedPreferences): String =
+        prefs.getString(KEY_INSTALL_ID, null) ?: UUID.randomUUID().toString()
+            .also { prefs.edit().putString(KEY_INSTALL_ID, it).apply() }
+
+    // -------------------------------------------------------------------------
+    // Common attributes (§4 "Consistent session properties and span attributes").
+    //
+    // Every span and log carries the same build context, merged in HERE so
+    // dashboards can always slice by version/flavor without feature code
+    // remembering to attach them.
+    // -------------------------------------------------------------------------
+
+    private val commonAttributes: Map<String, String> by lazy {
+        mapOf(
+            "app.version" to BuildConfig.VERSION_NAME,
+            "app.flavor" to BuildConfig.FLAVOR_env,
+        )
+    }
+
+    private fun spanAttributes(attributes: Map<String, String>): Map<String, String> =
+        TelemetryGuardrails.sanitizeAttributes(commonAttributes + attributes)
+
+    private fun logProperties(properties: Map<String, Any>): Map<String, Any> =
+        commonAttributes + properties
 
     // -------------------------------------------------------------------------
     // Logs
@@ -40,15 +174,15 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
     // -------------------------------------------------------------------------
 
     override fun logInfo(message: String, properties: Map<String, Any>) {
-        Embrace.logMessage(message, Severity.INFO, properties)
+        log(message, Severity.INFO, properties)
     }
 
     override fun logWarning(message: String, properties: Map<String, Any>) {
-        Embrace.logMessage(message, Severity.WARNING, properties)
+        log(message, Severity.WARNING, properties)
     }
 
     override fun logError(message: String, properties: Map<String, Any>) {
-        Embrace.logMessage(message, Severity.ERROR, properties)
+        log(message, Severity.ERROR, properties)
     }
 
     override fun logException(
@@ -56,7 +190,30 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
         properties: Map<String, Any>,
         message: String?,
     ) {
-        Embrace.logException(throwable, Severity.ERROR, properties, message)
+        if (!capturing || !config.logsEnabled) return
+        Embrace.logException(throwable, Severity.ERROR, logProperties(properties), message)
+    }
+
+    /**
+     * Single funnel for message logs: gating (kill switch + logsEnabled),
+     * rate limiting (§8 "logging in tight loops"), name sanity, and common
+     * properties all apply here, once.
+     */
+    private fun log(message: String, severity: Severity, properties: Map<String, Any>) {
+        if (!capturing || !config.logsEnabled) return
+        val allowed = logRateLimiter.tryAcquire(System.currentTimeMillis()) { dropped ->
+            // One summary per window, so the flood is visible without BEING the flood.
+            Embrace.logMessage(
+                "Telemetry logs rate-limited",
+                Severity.WARNING,
+                logProperties(mapOf("dropped_count" to dropped, "max_per_minute" to config.maxLogsPerMinute)),
+            )
+        }
+        if (!allowed) {
+            Timber.w("Log dropped by telemetry rate limiter: %s", message)
+            return
+        }
+        Embrace.logMessage(message, severity, logProperties(properties))
     }
 
     // -------------------------------------------------------------------------
@@ -91,7 +248,19 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
     // -------------------------------------------------------------------------
 
     override fun startSpan(name: String): EmbraceSpan? {
-        return Embrace.startSpan(name).takeIf { it.isRecording }
+        if (!capturing || !config.spansEnabled) return null
+        return Embrace.startSpan(TelemetryGuardrails.sanitizeName(name)).takeIf { it.isRecording }
+    }
+
+    override fun startActiveSpan(
+        name: String,
+        attributes: Map<String, String>,
+        timeoutMs: Long?,
+        endOnBackground: Boolean,
+    ): ActiveSpan {
+        val span = startSpan(name) ?: return NoOpActiveSpan
+        spanAttributes(attributes).forEach { (k, v) -> span.addAttribute(k, v) }
+        return EmbraceActiveSpan(span, timeoutMs, endOnBackground)
     }
 
     override fun recordCompletedSpan(
@@ -101,12 +270,13 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
         attributes: Map<String, String>,
         errorCode: ErrorCode?,
     ) {
+        if (!capturing || !config.spansEnabled) return
         Embrace.recordCompletedSpan(
-            name = name,
+            name = TelemetryGuardrails.sanitizeName(name),
             startTimeMs = startTimeMs,
             endTimeMs = endTimeMs,
             errorCode = errorCode,
-            attributes = attributes,
+            attributes = spanAttributes(attributes),
         )
     }
 
@@ -115,7 +285,14 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
         attributes: Map<String, String>,
         block: () -> T,
     ): T {
-        return Embrace.recordSpan(name = name, attributes = attributes, code = block)
+        // The block ALWAYS runs — telemetry being off must never change
+        // product behavior.
+        if (!capturing || !config.spansEnabled) return block()
+        return Embrace.recordSpan(
+            name = TelemetryGuardrails.sanitizeName(name),
+            attributes = spanAttributes(attributes),
+            code = block,
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -129,6 +306,7 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
     // -------------------------------------------------------------------------
 
     override fun addBreadcrumb(message: String) {
+        if (!capturing || !config.breadcrumbsEnabled) return
         Embrace.addBreadcrumb(message)
     }
 
@@ -147,10 +325,12 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
     // -------------------------------------------------------------------------
 
     override fun addSessionProperty(key: String, value: String, permanent: Boolean) {
+        if (!capturing) return
         Embrace.addSessionProperty(key, value, permanent)
     }
 
     override fun removeSessionProperty(key: String) {
+        if (!capturing) return
         Embrace.removeSessionProperty(key)
     }
 
@@ -206,6 +386,7 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
         traceId: String?,
         w3cTraceparent: String?,
     ) {
+        if (!capturing || !config.networkCaptureEnabled) return
         val httpMethod = runCatching { HttpMethod.valueOf(method.uppercase()) }
             .getOrElse { HttpMethod.GET }
 
@@ -540,11 +721,16 @@ class EmbraceTelemetryService @Inject constructor() : TelemetryService {
     }
 
     companion object {
+        private const val PREFS_NAME = "telemetry_prefs"
+        private const val KEY_OPT_OUT = "telemetry_opt_out"
+        private const val KEY_INSTALL_ID = "telemetry_install_id"
+
         /**
-         * Singleton accessor for code that runs outside Hilt scope
-         * (Application.onCreate, top-level Composables). Prefer constructor
-         * injection in feature code.
+         * The single instance. Hilt provides this same object (see
+         * TelemetryModule), so consent/config state is shared between
+         * injected call sites and direct accessors (Application.onCreate,
+         * top-level Composables).
          */
-        val instance: TelemetryService by lazy { EmbraceTelemetryService() }
+        val instance: EmbraceTelemetryService by lazy { EmbraceTelemetryService() }
     }
 }

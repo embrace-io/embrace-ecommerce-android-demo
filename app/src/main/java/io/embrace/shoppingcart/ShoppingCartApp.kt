@@ -1,15 +1,9 @@
 package io.embrace.shoppingcart
 
 import android.app.Application
-import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
-import io.embrace.android.embracesdk.Embrace
-import io.embrace.android.embracesdk.otel.java.addJavaSpanExporter
-import io.embrace.shoppingcart.mock.MockNetworkConfig
-import io.embrace.shoppingcart.mock.MockNetworkConfigOverrides
-import io.embrace.shoppingcart.mock.NetworkScenario
-import io.embrace.shoppingcart.telemetry.CustomSpanExporter
-import timber.log.Timber
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
+import io.embrace.shoppingcart.telemetry.TelemetryConfig
 
 @HiltAndroidApp class ShoppingCartApp : Application() {
     override fun onCreate() {
@@ -26,11 +20,12 @@ import timber.log.Timber
             )
         }*/
 
-        Embrace.addJavaSpanExporter(CustomSpanExporter())
-
-        Embrace.start(this)
-
-        Embrace.addSessionProperty("flavor_env", BuildConfig.FLAVOR_env, true)
-        Embrace.addSessionProperty("flavor_embrace", BuildConfig.FLAVOR_embrace, true)
+        // The wrapper owns SDK startup: kill switch → consent → sampling →
+        // Embrace.start, with the PII-scrubbing exporter registered and start
+        // failures absorbed. See TelemetryService design notes.
+        EmbraceTelemetryService.instance.initialize(
+            context = this,
+            config = TelemetryConfig.forBuild(isDebug = BuildConfig.DEBUG),
+        )
     }
 }

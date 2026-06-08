@@ -1,5 +1,6 @@
 package io.embrace.shoppingcart.telemetry
 
+import android.content.Context
 import io.embrace.android.embracesdk.spans.EmbraceSpan
 import io.embrace.android.embracesdk.spans.ErrorCode
 
@@ -11,6 +12,15 @@ import io.embrace.android.embracesdk.spans.ErrorCode
  */
 object NoOpTelemetryService : TelemetryService {
 
+    override fun initialize(context: Context, config: TelemetryConfig) {}
+
+    override val isCapturing: Boolean = false
+
+    override fun optIn() {}
+    override fun optOut() {}
+
+    override fun startNewSession(clearUserInfo: Boolean) {}
+
     override fun logInfo(message: String, properties: Map<String, Any>) {}
     override fun logWarning(message: String, properties: Map<String, Any>) {}
     override fun logError(message: String, properties: Map<String, Any>) {}
@@ -21,6 +31,13 @@ object NoOpTelemetryService : TelemetryService {
     ) {}
 
     override fun startSpan(name: String): EmbraceSpan? = null
+
+    override fun startActiveSpan(
+        name: String,
+        attributes: Map<String, String>,
+        timeoutMs: Long?,
+        endOnBackground: Boolean,
+    ): ActiveSpan = NoOpActiveSpan
 
     override fun recordCompletedSpan(
         name: String,

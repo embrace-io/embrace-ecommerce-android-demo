@@ -1,5 +1,6 @@
 package io.embrace.shoppingcart.telemetry
 
+import android.content.Context
 import io.embrace.android.embracesdk.spans.EmbraceSpan
 import io.embrace.android.embracesdk.spans.ErrorCode
 
@@ -34,9 +35,18 @@ import io.embrace.android.embracesdk.spans.ErrorCode
 //        (Application.onCreate, top-level Composables).
 //
 //   3. LIFECYCLE & INITIALIZATION
-//      - The wrapper does NOT own SDK lifecycle. `Embrace.start(context)` is
-//        called once in ShoppingCartApp.onCreate (see also `applicationInitStart`
-//        / `applicationInitEnd` for accurate startup tracing).
+//      - The wrapper OWNS SDK lifecycle: ShoppingCartApp.onCreate calls
+//        `initialize(context, config)` once, and the wrapper decides whether
+//        to start the SDK (kill switch, consent, sampling) and absorbs start
+//        failures — feature code never sees an error.
+//      - Consent: `optOut()` persists the preference and calls
+//        Embrace.disable(); `optIn()` re-enables (on the next launch if the
+//        SDK was already disabled this process — disable() is one-way until
+//        relaunch). On launch, initialize() skips the SDK entirely for
+//        opted-out users, so no pre-consent data is captured.
+//      - Manual session boundaries: `startNewSession()` ends the current
+//        session and starts a fresh one. Call it at meaningful UX boundaries
+//        (login, the opt-in moment).
 //      - All wrapper methods are safe to call before the SDK is started — the
 //        underlying SDK no-ops or buffers as appropriate.
 //
@@ -56,13 +66,20 @@ import io.embrace.android.embracesdk.spans.ErrorCode
 //      - email / username are deprecated on the Android SDK and discouraged.
 //        The wrapper accepts them for cross-platform parity but most apps
 //        should pass null.
-//      - On user opt-out: call clearUser() AND Embrace.disable() (the wrapper
-//        does not own that decision — call it from your consent layer).
+//      - On user opt-out: call optOut() — it persists the preference, clears
+//        user identity, and calls Embrace.disable().
+//      - PII scrubbing: spans forwarded to external OTel exporters pass
+//        through PiiScrubbingSpanExporter, which redacts emails / card-like /
+//        phone-like values at the exporter layer so call sites can't bypass it.
 //
-//   6. OPERATIONAL CONTROLS (not implemented here, but wire-points exist)
-//      - Remote config / kill switches: gate Embrace.start() and the wrapper's
-//        public methods on a feature flag your app already has.
-//      - Partial enablement: gate spans/logs/network independently if needed.
+//   6. OPERATIONAL CONTROLS (TelemetryConfig)
+//      - Kill switch: TelemetryConfig.enabled = false no-ops the wrapper and
+//        never starts the SDK. In a real app, read it from remote config.
+//      - Partial enablement: spans/logs/breadcrumbs/network are gated
+//        independently (TelemetryConfig.*Enabled).
+//      - Sampling: sampleRolloutPercent picks a stable per-install bucket.
+//      - Debug vs release: TelemetryConfig.forBuild(isDebug) — debug builds
+//        get a larger log budget and skip sampling.
 //
 //   7. CROSS-PLATFORM PARITY (key divergences from iOS Swift wrapper)
 //      - Severity: Android has only INFO / WARNING / ERROR — there is NO DEBUG.
@@ -106,6 +123,51 @@ import io.embrace.android.embracesdk.spans.ErrorCode
  */
 interface TelemetryService {
 
+    // ---- Lifecycle & consent ----------------------------------------------
+
+    /**
+     * Initializes telemetry for this process. Call ONCE from
+     * `Application.onCreate`. The wrapper decides whether the Embrace SDK
+     * actually starts, in this order:
+     *
+     *   1. [TelemetryConfig.enabled] kill switch — off means nothing starts.
+     *   2. Persisted consent — opted-out users never start the SDK, so no
+     *      pre-consent data is captured.
+     *   3. [TelemetryConfig.sampleRolloutPercent] — installs outside the
+     *      sample bucket don't capture.
+     *
+     * If `Embrace.start` throws, the failure is logged and telemetry is
+     * disabled for this launch — the app keeps running, feature code never
+     * sees an error.
+     */
+    fun initialize(context: Context, config: TelemetryConfig = TelemetryConfig())
+
+    /** True when the SDK started and the wrapper is currently capturing. */
+    val isCapturing: Boolean
+
+    /**
+     * Records user consent and starts capture (immediately if possible).
+     * If the SDK was disabled by [optOut] earlier in this same process,
+     * capture resumes on the next launch — `Embrace.disable()` is one-way
+     * within a process.
+     */
+    fun optIn()
+
+    /**
+     * Revokes consent: persists the preference, clears user identity, and
+     * calls `Embrace.disable()` — capture stops immediately and unsent data
+     * is deleted. Survives app restarts until [optIn] is called.
+     */
+    fun optOut()
+
+    /**
+     * Ends the current session and starts a fresh one (manual session
+     * boundary). Use at meaningful UX boundaries: login, the consent opt-in
+     * moment, switching accounts. Pass `clearUserInfo = true` to also wipe
+     * user identity (e.g. on logout).
+     */
+    fun startNewSession(clearUserInfo: Boolean = false)
+
     // ---- Logs ------------------------------------------------------------
 
     fun logInfo(message: String, properties: Map<String, Any> = emptyMap())
@@ -121,6 +183,29 @@ interface TelemetryService {
 
     /** Returns a started [EmbraceSpan]. Caller owns calling `.stop()`. */
     fun startSpan(name: String): EmbraceSpan?
+
+    /**
+     * Starts a span and returns a lifecycle-safe [ActiveSpan] handle.
+     * Prefer this over [startSpan] when start and end live in different
+     * functions — the handle covers the classic failure modes:
+     *
+     *   - `timeoutMs` — if the span is still open after this long it is
+     *     closed as FAILURE, so hangs show up in the dashboard instead of
+     *     silently never arriving.
+     *   - `endOnBackground` — if the app leaves the foreground the span is
+     *     closed as USER_ABANDON.
+     *   - `stop()` is idempotent — first close wins (caller, timeout, or
+     *     background), later calls no-op.
+     *
+     * Never returns null: when capture is off you get a no-op handle, so
+     * feature code doesn't branch.
+     */
+    fun startActiveSpan(
+        name: String,
+        attributes: Map<String, String> = emptyMap(),
+        timeoutMs: Long? = null,
+        endOnBackground: Boolean = false,
+    ): ActiveSpan
 
     /**
      * Records a span that already happened. Honors real start/end times and
