@@ -29,7 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import io.embrace.shoppingcart.presentation.components.MessageSnackbar
 import android.content.Intent
 import androidx.compose.ui.platform.testTag
-import io.embrace.android.embracesdk.Embrace
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
 import io.embrace.shoppingcart.ui.checkout.CheckoutActivity
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -94,7 +94,7 @@ fun CartScreen(viewModel: CartViewModel = hiltViewModel()) {
             Text("Subtotal: $" + String.format("%.2f", state.subtotalCents / 100.0))
             Spacer(Modifier.height(8.dp))
             Button(onClick = {
-                Embrace.addBreadcrumb("CHECKOUT_STARTED")
+                EmbraceTelemetryService.instance.addBreadcrumb("CHECKOUT_STARTED")
                 if (state.items.isNotEmpty()) {
                     context.startActivity(Intent(context, CheckoutActivity::class.java))
                 }

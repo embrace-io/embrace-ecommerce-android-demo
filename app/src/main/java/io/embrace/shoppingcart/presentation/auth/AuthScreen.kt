@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import io.embrace.android.embracesdk.Embrace
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,7 +85,7 @@ fun AuthScreen(viewModel: AuthViewModel = hiltViewModel(), onSuccess: (() -> Uni
             OutlinedButton(
                 onClick = {
                     viewModel.enterAsGuest()
-                    Embrace.addBreadcrumb("Entered as guest")
+                    EmbraceTelemetryService.instance.addBreadcrumb("Entered as guest")
                           },
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth().testTag("enter_as_guest").clickable(onClickLabel = "Enter as guest") {

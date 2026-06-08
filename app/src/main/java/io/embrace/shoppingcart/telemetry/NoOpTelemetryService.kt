@@ -2,6 +2,7 @@ package io.embrace.shoppingcart.telemetry
 
 import android.content.Context
 import io.embrace.android.embracesdk.spans.EmbraceSpan
+import io.embrace.android.embracesdk.spans.EmbraceSpanEvent
 import io.embrace.android.embracesdk.spans.ErrorCode
 
 /**
@@ -45,6 +46,7 @@ object NoOpTelemetryService : TelemetryService {
         endTimeMs: Long,
         attributes: Map<String, String>,
         errorCode: ErrorCode?,
+        events: List<EmbraceSpanEvent>,
     ) {}
 
     override fun <T> recordSpan(

@@ -13,6 +13,7 @@ import io.embrace.shoppingcart.mock.MockNetworkConfig
 import io.embrace.shoppingcart.mock.NetworkScenario
 import io.embrace.shoppingcart.mock.MockNetworkConfigOverrides
 import io.embrace.shoppingcart.network.ApiService
+import io.embrace.shoppingcart.telemetry.TelemetryService
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -77,6 +78,7 @@ object NetworkModule {
     fun provideMockApiService(
         @ApplicationContext context: Context,
         moshi: Moshi,
-        config: MockNetworkConfig
-    ): ApiService = MockApiService(context, moshi, config)
+        config: MockNetworkConfig,
+        telemetry: TelemetryService,
+    ): ApiService = MockApiService(context, moshi, config, telemetry)
 }

@@ -8,6 +8,7 @@ import io.embrace.android.embracesdk.network.EmbraceNetworkRequest
 import io.embrace.android.embracesdk.network.http.HttpMethod
 import io.embrace.android.embracesdk.otel.java.addJavaSpanExporter
 import io.embrace.android.embracesdk.spans.EmbraceSpan
+import io.embrace.android.embracesdk.spans.EmbraceSpanEvent
 import io.embrace.android.embracesdk.spans.ErrorCode
 import io.embrace.shoppingcart.BuildConfig
 import timber.log.Timber
@@ -269,6 +270,7 @@ class EmbraceTelemetryService private constructor() : TelemetryService {
         endTimeMs: Long,
         attributes: Map<String, String>,
         errorCode: ErrorCode?,
+        events: List<EmbraceSpanEvent>,
     ) {
         if (!capturing || !config.spansEnabled) return
         Embrace.recordCompletedSpan(
@@ -277,6 +279,7 @@ class EmbraceTelemetryService private constructor() : TelemetryService {
             endTimeMs = endTimeMs,
             errorCode = errorCode,
             attributes = spanAttributes(attributes),
+            events = events,
         )
     }
 

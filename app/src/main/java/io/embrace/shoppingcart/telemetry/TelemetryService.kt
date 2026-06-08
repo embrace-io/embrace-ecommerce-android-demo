@@ -2,6 +2,7 @@ package io.embrace.shoppingcart.telemetry
 
 import android.content.Context
 import io.embrace.android.embracesdk.spans.EmbraceSpan
+import io.embrace.android.embracesdk.spans.EmbraceSpanEvent
 import io.embrace.android.embracesdk.spans.ErrorCode
 
 // =============================================================================
@@ -210,6 +211,11 @@ interface TelemetryService {
     /**
      * Records a span that already happened. Honors real start/end times and
      * optionally marks it as failed so it shows up as an error in the dashboard.
+     *
+     * `events` attaches point-in-time markers within the span. NOTE: span
+     * events with attributes are an Android-only richness — iOS spans don't
+     * model them the same way, so a cross-platform dashboard query can't rely
+     * on them. Keep them for Android-specific detail, not shared metrics.
      */
     fun recordCompletedSpan(
         name: String,
@@ -217,6 +223,7 @@ interface TelemetryService {
         endTimeMs: Long,
         attributes: Map<String, String> = emptyMap(),
         errorCode: ErrorCode? = null,
+        events: List<EmbraceSpanEvent> = emptyList(),
     )
 
     /**

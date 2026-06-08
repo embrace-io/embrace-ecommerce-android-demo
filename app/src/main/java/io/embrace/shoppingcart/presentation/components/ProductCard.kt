@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
 import coil.compose.AsyncImage
-import io.embrace.android.embracesdk.Embrace
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
 import io.embrace.shoppingcart.domain.model.Product
 
 @Composable
@@ -50,7 +50,7 @@ fun ProductCard(
                 // Add to cart button
                 IconButton(
                         onClick = {
-                            Embrace.addBreadcrumb("Added to cart: ${product.name}")
+                            EmbraceTelemetryService.instance.addBreadcrumb("Added to cart: ${product.name}")
                             onAddToCartClick(product)
                         },
                         enabled = !isAddingToCart && product.inStock,
@@ -83,7 +83,7 @@ fun ProductCard(
                 // Add to cart button
                 IconButton(
                     onClick = {
-                        Embrace.addBreadcrumb("Added to Favorites: ${product.name}")
+                        EmbraceTelemetryService.instance.addBreadcrumb("Added to Favorites: ${product.name}")
                     },
                     enabled = !isAddingToCart && product.inStock,
                     modifier =
