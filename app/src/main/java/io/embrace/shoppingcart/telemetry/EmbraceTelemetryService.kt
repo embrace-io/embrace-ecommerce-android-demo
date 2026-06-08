@@ -298,6 +298,24 @@ class EmbraceTelemetryService private constructor() : TelemetryService {
         )
     }
 
+    override fun recordStartupChildSpan(
+        name: String,
+        startTimeMs: Long,
+        endTimeMs: Long,
+        attributes: Map<String, String>,
+        errorCode: ErrorCode?,
+    ) {
+        if (!capturing || !config.spansEnabled) return
+        Embrace.addStartupTraceChildSpan(
+            name = TelemetryGuardrails.sanitizeName(name),
+            startTimeMs = startTimeMs,
+            endTimeMs = endTimeMs,
+            attributes = spanAttributes(attributes),
+            events = emptyList(),
+            errorCode = errorCode,
+        )
+    }
+
     // -------------------------------------------------------------------------
     // Breadcrumbs are the DEFAULT for UX context. Cheap, attach to the
     // session/crash for debugging, no schema required.

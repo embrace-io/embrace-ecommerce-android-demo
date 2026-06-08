@@ -55,6 +55,14 @@ object NoOpTelemetryService : TelemetryService {
         block: () -> T,
     ): T = block()
 
+    override fun recordStartupChildSpan(
+        name: String,
+        startTimeMs: Long,
+        endTimeMs: Long,
+        attributes: Map<String, String>,
+        errorCode: ErrorCode?,
+    ) {}
+
     override fun addBreadcrumb(message: String) {}
 
     override fun addSessionProperty(key: String, value: String, permanent: Boolean) {}

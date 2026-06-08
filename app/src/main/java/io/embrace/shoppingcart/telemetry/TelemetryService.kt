@@ -239,6 +239,20 @@ interface TelemetryService {
         block: () -> T,
     ): T
 
+    /**
+     * Records a span as a child of the app's startup trace. Use this from
+     * `Application.onCreate` for work that happens during cold start (e.g. a
+     * blocking 3rd-party SDK init) so its duration shows up under the startup
+     * trace in the dashboard. Only meaningful before startup completes.
+     */
+    fun recordStartupChildSpan(
+        name: String,
+        startTimeMs: Long,
+        endTimeMs: Long,
+        attributes: Map<String, String> = emptyMap(),
+        errorCode: ErrorCode? = null,
+    )
+
     // ---- Breadcrumbs -----------------------------------------------------
 
     fun addBreadcrumb(message: String)
