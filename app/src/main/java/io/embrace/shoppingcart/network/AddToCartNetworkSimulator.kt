@@ -1,8 +1,6 @@
 package io.embrace.shoppingcart.network
 
-import io.embrace.android.embracesdk.Embrace
-import io.embrace.android.embracesdk.network.EmbraceNetworkRequest
-import io.embrace.android.embracesdk.network.http.HttpMethod
+import io.embrace.shoppingcart.telemetry.TelemetryService
 import javax.inject.Inject
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -11,9 +9,11 @@ import kotlinx.coroutines.withContext
 
 /**
  * Simulates an "add to cart" network request (no real HTTP I/O).
- * Uses Embrace.recordNetworkRequest with randomized 1–2s duration.
+ * Routes through the telemetry wrapper with randomized 1–2s duration.
  */
-class AddToCartNetworkSimulator @Inject constructor() {
+class AddToCartNetworkSimulator @Inject constructor(
+    private val telemetry: TelemetryService,
+) {
 
     suspend fun simulate(productId: String, quantity: Int) = withContext(Dispatchers.IO) {
         val url = "https://example.com/cart/add?productId=${productId}&qty=${quantity}"
@@ -22,20 +22,13 @@ class AddToCartNetworkSimulator @Inject constructor() {
         delay(delayMs)
         val end = start + delayMs
 
-        val request = EmbraceNetworkRequest.fromCompletedRequest(
-            url,
-            HttpMethod.fromString("POST"),
-            start,
-            end,
-            0, // bytes sent
-            0, // bytes received
-            200, // status code
-            null, // custom trace id
-            null, // traceparent
-            null // capture data
+        telemetry.recordNetworkRequest(
+            url = url,
+            method = "POST",
+            startTimeMs = start,
+            endTimeMs = end,
+            statusCode = 200,
         )
-
-        Embrace.recordNetworkRequest(request)
     }
 }
 

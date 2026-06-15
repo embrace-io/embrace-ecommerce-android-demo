@@ -3,10 +3,8 @@ package io.embrace.shoppingcart.mock
 import android.content.Context
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
-import io.embrace.android.embracesdk.Embrace
-import io.embrace.android.embracesdk.network.EmbraceNetworkRequest
-import io.embrace.android.embracesdk.network.http.HttpMethod
 import io.embrace.shoppingcart.network.ApiService
+import io.embrace.shoppingcart.telemetry.TelemetryService
 import io.embrace.shoppingcart.network.ProductDto
 import io.embrace.shoppingcart.network.CategoryDto
 import io.embrace.shoppingcart.network.order.OrderRequest
@@ -18,7 +16,8 @@ import javax.inject.Inject
 class MockApiService @Inject constructor(
     private val context: Context,
     private val moshi: Moshi,
-    private val config: MockNetworkConfig
+    private val config: MockNetworkConfig,
+    private val telemetry: TelemetryService,
 ) : ApiService {
 
     private val productAdapter = moshi.adapter<List<ProductDto>>(
@@ -40,26 +39,26 @@ class MockApiService @Inject constructor(
                 delay(cfg.defaultDelayMs)
                 val result = loadProducts()
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.GET, start, end, 200)
+                recordCompletedNetworkRequest(url, "GET", start, end, 200)
                 result
             }
             NetworkScenario.FAILURE -> {
                 delay(cfg.defaultDelayMs)
                 val end = System.currentTimeMillis()
-                recordIncompletedNetworkRequest(url, HttpMethod.GET, start, end, "Simulated network failure")
+                recordIncompletedNetworkRequest(url, "GET", start, end, "Simulated network failure")
                 throw IOException("Simulated network failure")
             }
             NetworkScenario.SLOW -> {
                 delay(cfg.slowDelayMs)
                 val result = loadProducts()
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.GET, start, end, 200)
+                recordCompletedNetworkRequest(url, "GET", start, end, 200)
                 result
             }
             NetworkScenario.SERVER_ERROR -> {
                 delay(cfg.defaultDelayMs)
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.GET, start, end, 500)
+                recordCompletedNetworkRequest(url, "GET", start, end, 500)
                 throw IOException("Simulated server error (500)")
             }
         }
@@ -74,26 +73,26 @@ class MockApiService @Inject constructor(
                 delay(cfg.defaultDelayMs)
                 val result = loadCategories()
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.GET, start, end, 200)
+                recordCompletedNetworkRequest(url, "GET", start, end, 200)
                 result
             }
             NetworkScenario.FAILURE -> {
                 delay(cfg.defaultDelayMs)
                 val end = System.currentTimeMillis()
-                recordIncompletedNetworkRequest(url, HttpMethod.GET, start, end, "Simulated network failure")
+                recordIncompletedNetworkRequest(url, "GET", start, end, "Simulated network failure")
                 throw IOException("Simulated network failure")
             }
             NetworkScenario.SLOW -> {
                 delay(cfg.slowDelayMs)
                 val result = loadCategories()
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.GET, start, end, 200)
+                recordCompletedNetworkRequest(url, "GET", start, end, 200)
                 result
             }
             NetworkScenario.SERVER_ERROR -> {
                 delay(cfg.defaultDelayMs)
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.GET, start, end, 500)
+                recordCompletedNetworkRequest(url, "GET", start, end, 500)
                 throw IOException("Simulated server error (500)")
             }
         }
@@ -108,26 +107,26 @@ class MockApiService @Inject constructor(
                 delay(cfg.defaultDelayMs)
                 val response = OrderResponse(orderId = "ord-${System.currentTimeMillis()}")
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.POST, start, end, 200)
+                recordCompletedNetworkRequest(url, "POST", start, end, 200)
                 response
             }
             NetworkScenario.FAILURE -> {
                 delay(cfg.defaultDelayMs)
                 val end = System.currentTimeMillis()
-                recordIncompletedNetworkRequest(url, HttpMethod.POST, start, end, "Simulated order placement failure")
+                recordIncompletedNetworkRequest(url, "POST", start, end, "Simulated order placement failure")
                 throw IOException("Connection error failure")
             }
             NetworkScenario.SLOW -> {
                 delay(cfg.slowDelayMs)
                 val response = OrderResponse(orderId = "ord-${System.currentTimeMillis()}")
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.POST, start, end, 200)
+                recordCompletedNetworkRequest(url, "POST", start, end, 200)
                 response
             }
             NetworkScenario.SERVER_ERROR -> {
                 delay(cfg.defaultDelayMs)
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, HttpMethod.POST, start, end, 500)
+                recordCompletedNetworkRequest(url, "POST", start, end, 500)
                 throw IOException("Server error (500)")
             }
         }
@@ -145,40 +144,33 @@ class MockApiService @Inject constructor(
 
     private fun recordCompletedNetworkRequest(
         url: String,
-        httpMethod: HttpMethod,
+        httpMethod: String,
         startTime: Long,
         endTime: Long,
         statusCode: Int
-        ) {
-        Embrace.recordNetworkRequest(
-            EmbraceNetworkRequest.fromCompletedRequest(
-                url = url,
-                httpMethod = httpMethod,
-                startTime = startTime,
-                endTime = endTime,
-                bytesSent = 0,
-                bytesReceived = 0,
-                statusCode = statusCode
-            )
+    ) {
+        telemetry.recordNetworkRequest(
+            url = url,
+            method = httpMethod,
+            startTimeMs = startTime,
+            endTimeMs = endTime,
+            statusCode = statusCode,
         )
     }
 
     private fun recordIncompletedNetworkRequest(
         url: String,
-        httpMethod: HttpMethod,
+        httpMethod: String,
         startTime: Long,
         endTime: Long,
         errorMessage: String
     ) {
-        Embrace.recordNetworkRequest(
-            EmbraceNetworkRequest.fromIncompleteRequest(
-                url = url,
-                httpMethod = httpMethod,
-                startTime = startTime,
-                endTime = endTime,
-                errorType = "Connection Error",
-                errorMessage = errorMessage
-            )
+        telemetry.recordNetworkRequest(
+            url = url,
+            method = httpMethod,
+            startTimeMs = startTime,
+            endTimeMs = endTime,
+            errorMessage = errorMessage,
         )
     }
 }

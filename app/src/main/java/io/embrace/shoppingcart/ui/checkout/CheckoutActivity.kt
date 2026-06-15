@@ -25,7 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import io.embrace.android.embracesdk.Embrace
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
 import io.embrace.shoppingcart.ui.theme.EmbraceShoppingCartTheme
 import io.embrace.shoppingcart.presentation.checkout.CheckoutStep
 import io.embrace.shoppingcart.presentation.checkout.CheckoutViewModel
@@ -91,14 +91,14 @@ private fun CheckoutScaffold(viewModel: CheckoutViewModel = hiltViewModel(), onF
                 composable("shipping") {
                     viewModel.goTo(CheckoutStep.Shipping)
                     ShippingStep(onNext = {
-                        Embrace.addBreadcrumb("CHECKOUT_SHIPPING_COMPLETED")
+                        EmbraceTelemetryService.instance.addBreadcrumb("CHECKOUT_SHIPPING_COMPLETED")
                         navController.navigate("payment")
                     })
                 }
                 composable("payment") {
                     viewModel.goTo(CheckoutStep.Payment)
                     PaymentStep(onNext = {
-                        Embrace.addBreadcrumb("CHECKOUT_PAYMENT_COMPLETED")
+                        EmbraceTelemetryService.instance.addBreadcrumb("CHECKOUT_PAYMENT_COMPLETED")
                         navController.navigate("confirm")
                     })
                 }

@@ -18,15 +18,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
 import androidx.compose.ui.platform.testTag
-import io.embrace.android.embracesdk.Embrace
-import io.embrace.android.embracesdk.network.EmbraceNetworkRequest
-import io.embrace.android.embracesdk.network.http.HttpMethod
-import io.embrace.android.embracesdk.otel.java.getJavaOpenTelemetry
 import io.embrace.android.embracesdk.spans.EmbraceSpanEvent
 import io.embrace.android.embracesdk.spans.ErrorCode
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
 import io.embrace.shoppingcart.ui.payment.PaymentMethodsActivity
-import io.opentelemetry.api.common.Attributes
-import java.time.Instant
 import kotlin.random.Random
 
 @Composable
@@ -61,7 +56,7 @@ fun CartReviewStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () ->
     val state by viewModel.state.collectAsState()
     val now = System.currentTimeMillis()
     val durationMs by remember { mutableStateOf(kotlin.random.Random.nextLong(200, 1501)) }
-    Embrace.recordCompletedSpan(
+    EmbraceTelemetryService.instance.recordCompletedSpan(
         name = "Render Cart Items",
         startTimeMs = now - durationMs,
         endTimeMs = now
@@ -88,16 +83,24 @@ fun CartReviewStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () ->
 fun ShippingStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Unit) {
     val state by viewModel.state.collectAsState()
 
-    val tracer = Embrace.getJavaOpenTelemetry().tracerProvider.get("shipping")
-
-    val span = tracer.spanBuilder("shipping-trace")
-        .setAttribute("tracer shipping attribute", "some value")
-        .setStartTimestamp(Instant.ofEpochMilli(Embrace.getSdkCurrentTimeMs() - 2000))
-        .startSpan()
-
-    span.addEvent("shipping event", Attributes.builder().put("shipping event attribute", "other value").build())
-
-    span.end()
+    // Previously used the raw OTel tracer via Embrace.getJavaOpenTelemetry().
+    // Routed through the wrapper: a backdated span carrying one attribute and
+    // one span event expresses the same telemetry without importing the SDK.
+    val shippingEnd = System.currentTimeMillis()
+    val shippingStart = shippingEnd - 2000
+    EmbraceTelemetryService.instance.recordCompletedSpan(
+        name = "shipping-trace",
+        startTimeMs = shippingStart,
+        endTimeMs = shippingEnd,
+        attributes = mapOf("tracer shipping attribute" to "some value"),
+        events = listOfNotNull(
+            EmbraceSpanEvent.create(
+                name = "shipping event",
+                timestampMs = shippingStart,
+                attributes = mapOf("shipping event attribute" to "other value"),
+            )
+        ),
+    )
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(state.name, viewModel::updateName, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth().testTag("name_field"))
@@ -129,15 +132,16 @@ fun PaymentStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Un
             val chanceOfFailure = remember { Random.nextInt(10) } // 0..9 inclusive
 
             val attributes = mapOf("custom span attribute" to "custom span attribute value")
-            val events = listOf(
+            val events = listOfNotNull(
                 EmbraceSpanEvent.create(
-                    name ="custom span event",
-                    timestampMs = Embrace.getSdkCurrentTimeMs(),
+                    name = "custom span event",
+                    timestampMs = now,
                     attributes = mapOf("custom event attribute" to "custom event attribute value")
-                )!!
+                )
             )
 
-            Embrace.recordCompletedSpan(
+            val telemetry = EmbraceTelemetryService.instance
+            telemetry.recordCompletedSpan(
                 name = "Loaded Payment Methods A",
                 startTimeMs = now - durationMs,
                 endTimeMs = now,
@@ -150,15 +154,15 @@ fun PaymentStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Un
                     failedRequestPaymentMethods(now, durationMs)
                     failedRequestPaymentMethods(now, durationMs)
                     failedRequestPaymentMethods(now, durationMs)
-                    Embrace.recordCompletedSpan(
+                    telemetry.recordCompletedSpan(
                         name = "Loaded Payment Methods",
                         startTimeMs = now - durationMs,
                         endTimeMs = now,
                         errorCode = ErrorCode.FAILURE
                     )
-                    Embrace.logError("Rejected: too many requests")
+                    telemetry.logError("Rejected: too many requests")
                 }
-                else -> Embrace.recordCompletedSpan(
+                else -> telemetry.recordCompletedSpan(
                     name = "Loaded Payment Methods",
                     startTimeMs = now - durationMs,
                     endTimeMs = now,
@@ -188,16 +192,12 @@ fun PaymentStep(viewModel: CheckoutViewModel = hiltViewModel(), onNext: () -> Un
 
 @Composable
 private fun failedRequestPaymentMethods(now: Long, durationMs: Long) {
-    Embrace.recordNetworkRequest(
-        EmbraceNetworkRequest.fromCompletedRequest(
-            url = "https://api.ecommerce.com/payment_methods",
-            httpMethod = HttpMethod.GET,
-            startTime = now - durationMs + 200,
-            endTime = now,
-            bytesSent = 0,
-            bytesReceived = 0,
-            statusCode = 429
-        )
+    EmbraceTelemetryService.instance.recordNetworkRequest(
+        url = "https://api.ecommerce.com/payment_methods",
+        method = "GET",
+        startTimeMs = now - durationMs + 200,
+        endTimeMs = now,
+        statusCode = 429,
     )
 }
 
@@ -235,7 +235,7 @@ fun ConfirmationStep(viewModel: CheckoutViewModel = hiltViewModel(), onFinish: (
                 }
                 val chanceOfFailure = remember { Random.nextInt(10) } // 0..9 inclusive
                 if (chanceOfFailure < 3) {
-                    Embrace.logInfo("Displaying error modal: Sorry, we're having trouble processing your order. Please try again later.")
+                    EmbraceTelemetryService.instance.logInfo("Displaying error modal: Sorry, we're having trouble processing your order. Please try again later.")
                 }
             }
         }

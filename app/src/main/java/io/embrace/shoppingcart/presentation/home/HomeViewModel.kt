@@ -3,7 +3,6 @@ package io.embrace.shoppingcart.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.embrace.android.embracesdk.Embrace
 import io.embrace.shoppingcart.domain.model.Category
 import io.embrace.shoppingcart.domain.model.Product
 import io.embrace.shoppingcart.domain.model.ProductFilters
@@ -15,6 +14,7 @@ import io.embrace.shoppingcart.domain.usecase.UpdateCartItemQuantityUseCase
 import io.embrace.shoppingcart.network.AddToCartNetworkSimulator
 import io.embrace.shoppingcart.mock.AuthState
 import io.embrace.shoppingcart.mock.MockAuthService
+import io.embrace.shoppingcart.telemetry.TelemetryService
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +29,8 @@ class HomeViewModel @Inject constructor(
     private val filterAndSortProducts: FilterAndSortProductsUseCase,
     private val updateCartItemQuantity: UpdateCartItemQuantityUseCase,
     private val authService: MockAuthService,
-    private val addToCartNetworkSimulator: AddToCartNetworkSimulator
+    private val addToCartNetworkSimulator: AddToCartNetworkSimulator,
+    private val telemetry: TelemetryService,
 ) : ViewModel() {
 
     data class UiState(
@@ -58,7 +59,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
-                Embrace.addBreadcrumb("Enter Product Search.")
+                telemetry.addBreadcrumb("Enter Product Search.")
 
                 val (productsResult, categoriesResult) = kotlinx.coroutines.supervisorScope {
                     val productsDeferred = async { runCatching { getProducts() } }

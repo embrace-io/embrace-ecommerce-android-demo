@@ -1,16 +1,11 @@
 package io.embrace.shoppingcart
 
 import android.app.Application
-import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
-import io.embrace.android.embracesdk.Embrace
-import io.embrace.android.embracesdk.otel.java.addJavaSpanExporter
-import io.embrace.shoppingcart.mock.MockNetworkConfig
-import io.embrace.shoppingcart.mock.MockNetworkConfigOverrides
-import io.embrace.shoppingcart.mock.NetworkScenario
-import io.embrace.shoppingcart.telemetry.CustomSpanExporter
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
+import io.embrace.shoppingcart.telemetry.TelemetryConfig
+import io.embrace.shoppingcart.telemetry.TelemetryService
 import kotlin.random.Random
-import timber.log.Timber
 
 @HiltAndroidApp class ShoppingCartApp : Application() {
     override fun onCreate() {
@@ -27,21 +22,27 @@ import timber.log.Timber
             )
         }*/
 
-        Embrace.addJavaSpanExporter(CustomSpanExporter())
+        // The wrapper owns SDK startup: kill switch → consent → sampling →
+        // Embrace.start, with the PII-scrubbing exporter registered and start
+        // failures absorbed. See TelemetryService design notes.
+        val telemetry = EmbraceTelemetryService.instance
+        telemetry.initialize(
+            context = this,
+            config = TelemetryConfig.forBuild(isDebug = BuildConfig.DEBUG),
+        )
 
-        Embrace.start(this)
-
-        Embrace.addSessionProperty("flavor_env", BuildConfig.FLAVOR_env, true)
-        Embrace.addSessionProperty("flavor_embrace", BuildConfig.FLAVOR_embrace, true)
-
-        simulateAuthSdkInit()
+        simulateAuthSdkInit(telemetry)
     }
 
     /**
      * Demo scenario: a 3rd-party auth SDK that blocks app startup.
      * 25% of cold starts hit a slow path (~2–2.5s), the rest are fast (~100–250ms).
+     *
+     * The Thread.sleep simulates real blocking work and runs regardless of
+     * telemetry; the timing is reported through the wrapper as a child of the
+     * startup trace.
      */
-    private fun simulateAuthSdkInit() {
+    private fun simulateAuthSdkInit(telemetry: TelemetryService) {
         val isSlow = Random.nextDouble() < SLOW_STARTUP_PROBABILITY
         val delayMs = if (isSlow) {
             Random.nextLong(SLOW_AUTH_MIN_MS, SLOW_AUTH_MAX_MS)
@@ -50,13 +51,13 @@ import timber.log.Timber
         }
         val scenario = if (isSlow) "slow" else "fast"
 
-        Embrace.addSessionProperty("startup_scenario", scenario, false)
+        telemetry.addSessionProperty("startup_scenario", scenario, permanent = false)
 
-        val startMs = Embrace.getSdkCurrentTimeMs()
+        val startMs = System.currentTimeMillis()
         Thread.sleep(delayMs)
-        val endMs = Embrace.getSdkCurrentTimeMs()
+        val endMs = System.currentTimeMillis()
 
-        Embrace.addStartupTraceChildSpan(
+        telemetry.recordStartupChildSpan(
             name = "auth-sdk",
             startTimeMs = startMs,
             endTimeMs = endMs,
@@ -64,8 +65,6 @@ import timber.log.Timber
                 "auth.scenario" to scenario,
                 "auth.provider" to "demo-3p-auth",
             ),
-            events = emptyList(),
-            errorCode = null,
         )
     }
 

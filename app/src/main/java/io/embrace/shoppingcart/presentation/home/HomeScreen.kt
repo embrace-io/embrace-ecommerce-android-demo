@@ -24,13 +24,11 @@ import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import io.embrace.shoppingcart.ui.product.ProductDetailActivity
 import androidx.compose.ui.platform.testTag
-import io.embrace.android.embracesdk.Embrace
 import io.embrace.shoppingcart.BuildConfig
 import io.embrace.shoppingcart.presentation.testutil.UiTestOverrides
-import timber.log.Timber
+import io.embrace.shoppingcart.telemetry.EmbraceTelemetryService
 import android.os.Handler
 import android.os.Looper
-import io.embrace.android.embracesdk.Severity
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -150,8 +148,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         chance < 8 -> "B"
         else -> "C"
     }
-    Embrace.addSessionProperty("User Cohort", cohort, false)
-    Timber.tag("Embrace").d("Embrace session id: %s", Embrace.currentSessionId)
+    EmbraceTelemetryService.instance.addSessionProperty("User Cohort", cohort, false)
     if (BuildConfig.TRIGGER_ANRS) {
         blockWithBusyLoop()
     }
@@ -159,7 +156,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     try {
         throw UnsupportedOperationException("This is a handled exception message")
     } catch (ex: Throwable) {
-        Embrace.logException(ex, Severity.ERROR)
+        EmbraceTelemetryService.instance.logException(ex)
     }
 }
 private const val DEFAULT_BLOCK_DURATION_MS = 15000L

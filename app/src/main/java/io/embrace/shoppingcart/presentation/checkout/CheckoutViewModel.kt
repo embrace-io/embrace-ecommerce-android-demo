@@ -3,7 +3,6 @@ package io.embrace.shoppingcart.presentation.checkout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.embrace.android.embracesdk.Embrace
 import io.embrace.shoppingcart.data.local.AddressDao
 import io.embrace.shoppingcart.data.local.OrderDao
 import io.embrace.shoppingcart.data.local.OrderEntity
