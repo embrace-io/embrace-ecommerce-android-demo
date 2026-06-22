@@ -23,8 +23,8 @@ android {
         applicationId = "io.embrace.shoppingcart"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "2.2"
+        versionCode = 5
+        versionName = "3.0"
 
         // Keep default runner; we dynamically read mock overrides in MockApiService
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -54,11 +54,12 @@ android {
         create("mock") {
             dimension = "env"
             applicationIdSuffix = ".mock"
-            versionNameSuffix = "-mock"
+            versionName = "3.1"
             buildConfigField("boolean", "USE_MOCK", "true")
         }
         create("prod") {
             dimension = "env"
+            versionName = "3.0"
             buildConfigField("boolean", "USE_MOCK", "false")
         }
         create("demo") {
