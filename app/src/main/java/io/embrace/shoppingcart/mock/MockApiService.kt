@@ -120,7 +120,7 @@ class MockApiService @Inject constructor(
                 delay(cfg.slowDelayMs)
                 val response = OrderResponse(orderId = "ord-${System.currentTimeMillis()}")
                 val end = System.currentTimeMillis()
-                recordCompletedNetworkRequest(url, "POST", start, end, 200)
+                recordCompletedNetworkRequest(url, "POST", start, start + cfg.slowDelayMs, 200)
                 response
             }
             NetworkScenario.SERVER_ERROR -> {
