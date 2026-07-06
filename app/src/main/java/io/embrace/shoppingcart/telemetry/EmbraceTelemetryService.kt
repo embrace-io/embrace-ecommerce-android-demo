@@ -3,6 +3,7 @@ package io.embrace.shoppingcart.telemetry
 import android.content.Context
 import android.content.SharedPreferences
 import io.embrace.android.embracesdk.Embrace
+import io.embrace.android.embracesdk.PropertyScope
 import io.embrace.android.embracesdk.Severity
 import io.embrace.android.embracesdk.network.EmbraceNetworkRequest
 import io.embrace.android.embracesdk.network.http.HttpMethod
@@ -101,7 +102,11 @@ class EmbraceTelemetryService private constructor() : TelemetryService {
 
     override fun startNewSession(clearUserInfo: Boolean) {
         if (!capturing) return
-        Embrace.endSession(clearUserInfo)
+        // Embrace 9.x removed the clearUserInfo parameter from endSession (now
+        // endUserSession). Replicate the old behavior by clearing user info
+        // explicitly before ending the user session.
+        if (clearUserInfo) clearUser()
+        Embrace.endUserSession()
     }
 
     private fun startSdk(context: Context) {
@@ -347,12 +352,19 @@ class EmbraceTelemetryService private constructor() : TelemetryService {
 
     override fun addSessionProperty(key: String, value: String, permanent: Boolean) {
         if (!capturing) return
-        Embrace.addSessionProperty(key, value, permanent)
+        // Embrace 9.x replaced the permanent boolean with a 3-way PropertyScope.
+        // We preserve this wrapper's existing boolean contract by mapping:
+        //   permanent = true  -> PERMANENT     (survives process death)
+        //   permanent = false -> USER_SESSION  (cleared when the session ends)
+        // The new PROCESS scope (survives session boundaries but not process
+        // death) has no boolean equivalent, so it is not reachable via this API.
+        val scope = if (permanent) PropertyScope.PERMANENT else PropertyScope.USER_SESSION
+        Embrace.addUserSessionProperty(key, value, scope)
     }
 
     override fun removeSessionProperty(key: String) {
         if (!capturing) return
-        Embrace.removeSessionProperty(key)
+        Embrace.removeUserSessionProperty(key)
     }
 
     // -------------------------------------------------------------------------
