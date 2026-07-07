@@ -25,16 +25,14 @@ after real inactivity, a max-duration timeout, or an explicit manual call — ba
 splits it. The old session/background-activity concept still exists underneath, renamed to "Session Part."
 
 9.0.0 ships the **API surface** for this new model, but not the behavior change itself:
-- No dashboard UI changes ship with 9.0.0. Timelines, session lists, etc. look identical.
-- The backend work to actually stitch Session Parts together into the new Session concept had not shipped as of
-  9.0.0 (per internal roadmap) — so upgrading now is safe, forward-compatible groundwork, not a functional change.
+- The public docs are explicit that no dashboard UI changes ship with 9.0.0 — timelines, session lists, etc. look
+  identical until Embrace rolls out further changes on top of this foundation.
 - Because the affected methods were **renamed** (not kept under the same name with new behavior), any app that
   compiles against 9.x and didn't change its session-related code will not have silently opted into anything new.
   If your code doesn't call the old session methods at all, this upgrade needs zero code changes beyond the
   version bump.
 
-Source: `docs/android/upgrading.md` ("Upgrading from 8.x to 9.x" section, embrace-docs repo) + Notion "Android
-9.0.0" release page.
+Source: [Embrace Android SDK Upgrade Guide](https://embrace.io/docs/android/upgrading/#upgrading-from-8x-to-9x).
 
 ## Step-by-step
 
@@ -58,8 +56,18 @@ upgrade.
 
 ### 3. Find every call site that uses the old session APIs
 
-Grep the project (Kotlin and Java, both `Embrace.getInstance().xxx(...)` and bare `Embrace.xxx(...)` call styles)
-for:
+Don't assume the app calls `Embrace` directly everywhere — many apps wrap SDK calls behind a facade or telemetry
+helper (e.g. a `TelemetryService`) so that feature code never touches `Embrace` by name. Grepping only for
+`Embrace.getInstance()` / `Embrace.` can miss those call sites entirely if the wrapper stores it under a renamed
+variable. Start broader instead:
+
+```
+import io.embrace.android.embracesdk.Embrace
+```
+
+That import is unavoidable wherever the SDK is actually called from, whether that's a wrapper class or many
+scattered call sites. Once you've found those files, grep within them (and anywhere else `Embrace.getInstance().xxx(...)`
+or bare `Embrace.xxx(...)` appears) for:
 
 ```
 addSessionProperty(
@@ -154,7 +162,8 @@ afterwards on `main`. It has nothing to do with the session migration above, but
 - [ ] Confirm current version is 8.x (not 7.x — different guide applies)
 - [ ] Bump `io.embrace:embrace-android-sdk` (and Gradle plugin, if version-pinned separately) to the target 9.x version
 - [ ] Gradle sync succeeds
-- [ ] Grep for `addSessionProperty(`, `removeSessionProperty(`, `endSession(`, `getCurrentSessionId(`
+- [ ] Find where the SDK is actually called from (`import io.embrace.android.embracesdk.Embrace` — don't assume it's called directly everywhere, check any telemetry wrapper/facade class too)
+- [ ] Grep for `addSessionProperty(`, `removeSessionProperty(`, `endSession(`, `getCurrentSessionId(`, `currentSessionId`
 - [ ] Migrate each hit per the table above, choosing `PropertyScope` deliberately (not just 1:1 boolean mapping)
 - [ ] If any `endSession(true)` call sites existed, add a `UserSessionListener` to replicate the user-info clearing
 - [ ] Project compiles with no remaining Embrace-related errors
@@ -162,18 +171,11 @@ afterwards on `main`. It has nothing to do with the session migration above, but
 
 ## Sources
 
-- `embrace-docs/docs/android/upgrading.md` — "Upgrading from 8.x to 9.x" section (public upgrade guide)
-- `embrace-docs/docs/android/changelog.md` — 9.0.0 changelog entry
-- `embrace-android-sdk` repo, verified directly against the public API bytecode dump (confirms the guide is
-  accurate and the old methods are fully removed, not deprecated-and-kept):
-  - `embrace-android-sdk/api/embrace-android-sdk.api`
-  - `embrace-android-api/api/embrace-android-api.api`
-  - `embrace-android-api/src/main/kotlin/io/embrace/android/embracesdk/PropertyScope.kt`
-  - `embrace-android-api/src/main/kotlin/io/embrace/android/embracesdk/SessionStateEvent.kt`
-  - `embrace-android-api/src/main/kotlin/io/embrace/android/embracesdk/UserSessionListener.kt`
-  - `embrace-android-api/src/main/kotlin/io/embrace/android/embracesdk/internal/api/UserSessionApi.kt` (KDoc source
-    for the `PROCESS` scope nuance, which isn't spelled out in the public docs)
-  - `embrace-android-sdk/src/integrationTest/kotlin/io/embrace/android/embracesdk/testcases/PublicApiTest.kt`
-    (integration tests proving `getCurrentUserSessionId` is stable across backgrounding, unlike its 8.x predecessor)
-- Notion: "Android 9.0.0" release page, "Redefine Sessions SDK Spec" (internal context on why the session model
-  is changing — useful for explaining the "why" to a customer, not required for the mechanical upgrade itself)
+- [Embrace Android SDK Upgrade Guide](https://embrace.io/docs/android/upgrading/#upgrading-from-8x-to-9x) —
+  official 8.x → 9.x migration guide
+- [Embrace Android SDK Changelog](https://embrace.io/docs/android/changelog/) — check the entry for the specific
+  9.x version being targeted before upgrading
+
+A few details above go beyond what the public guide spells out (the `getCurrentUserSessionId` background-stability
+change, the `PropertyScope.PROCESS` nuance, and the exact replacement for `clearUserInfo`) — these were confirmed
+directly against the SDK's source and public API surface while building this skill.
